@@ -82,6 +82,11 @@ button {
   gap: 1rem;
 }
 
+.grid.single {
+  display: grid;
+  gap: 0.85rem;
+}
+
 .panel,
 .workout-card,
 .modal-card,
