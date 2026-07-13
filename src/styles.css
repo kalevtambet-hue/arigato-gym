@@ -261,6 +261,69 @@ select {
   cursor: pointer;
 }
 
+@media (max-width: 640px) {
+  .app-shell {
+    padding-bottom: 5.15rem;
+  }
+
+  .topbar {
+    padding: 0.95rem 1rem 0.35rem;
+  }
+
+  .topbar h1 {
+    font-size: 2.15rem;
+    line-height: 1.02;
+  }
+
+  .page-shell {
+    padding: 0 0.85rem 1rem;
+  }
+
+  .page,
+  .stack,
+  .grid.two-up,
+  .grid.single,
+  .stack-list,
+  .button-stack {
+    gap: 0.7rem;
+  }
+
+  .panel,
+  .workout-card,
+  .modal-card,
+  .list-card,
+  .empty-card,
+  .config-card {
+    padding: 0.85rem;
+    border-radius: 1rem;
+  }
+
+  input,
+  select {
+    padding: 0.8rem 0.9rem;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .ghost-button,
+  .hero-button,
+  .success-button,
+  .warning-button,
+  .file-button,
+  .tab-chip {
+    min-height: 2.8rem;
+    padding: 0.72rem 0.95rem;
+  }
+
+  .hero-button {
+    font-size: 1rem;
+  }
+
+  .day-tabs {
+    gap: 0.45rem;
+  }
+}
+
 @media (min-width: 860px) {
   .page-shell {
     padding: 0 1.25rem 6rem;
