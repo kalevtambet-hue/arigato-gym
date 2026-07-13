@@ -197,8 +197,8 @@ export function WorkoutPage() {
     <section className="page">
       <div className="section-header">
         <div>
-          <p className="eyebrow">Tanaane logi</p>
-          <h2>Tanane treening</h2>
+          <p className="eyebrow">Tänane logi</p>
+          <h2>Tänane treening</h2>
         </div>
       </div>
 
@@ -214,13 +214,13 @@ export function WorkoutPage() {
               Alusta {day.name}
             </button>
           ))}
-          {workoutDays?.length === 0 ? <p className="empty-card">Loo enne treeningpaev.</p> : null}
+          {workoutDays?.length === 0 ? <p className="empty-card">Loo enne treeningpäev.</p> : null}
         </div>
       ) : null}
 
       {activeSession && nextExercise ? (
         <article className="workout-card">
-          <p className="eyebrow">Jargmine harjutus</p>
+          <p className="eyebrow">Järgmine harjutus</p>
           <h3>{nextExercise.exerciseName}</h3>
           <p className="muted">
             Masin #{nextExercise.machineNumber || '-'} · {nextExercise.targetSets} x{' '}
@@ -250,7 +250,7 @@ export function WorkoutPage() {
               className="warning-button"
               onClick={() => setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' })}
             >
-              Ei tulnud tais
+              Ei tulnud täis
             </button>
           </div>
         </article>
@@ -259,7 +259,7 @@ export function WorkoutPage() {
       {activeSession && !nextExercise && completedSummary.length === 0 ? (
         <div className="panel">
           <h3>Treening valmis</h3>
-          <p className="muted">Koik seeriad said kirja. Genereeri jargmised sihid.</p>
+          <p className="muted">Kõik seeriad said kirja. Genereeri järgmised sihid.</p>
           <button
             type="button"
             className="primary-button"
@@ -268,14 +268,14 @@ export function WorkoutPage() {
               await completeWorkout(activeSession, sessionExercises ?? [], setResults ?? []);
             }}
           >
-            Lopeta treening
+            Lõpeta treening
           </button>
         </div>
       ) : null}
 
       {completedSummary.length > 0 ? (
         <div className="panel">
-          <h3>Jargmine siht</h3>
+          <h3>Järgmine siht</h3>
           <ul className="stack-list">
             {completedSummary.map((item) => (
               <li key={item.id} className="list-card">
@@ -295,7 +295,7 @@ export function WorkoutPage() {
 
       {failureTarget ? (
         <div className="modal-card">
-          <h3>Ebaonnestunud seeria</h3>
+          <h3>Ebaõnnestunud seeria</h3>
           <label htmlFor="completedReps">
             Tegelikud kordused
             <input

@@ -7,7 +7,7 @@ export function Layout() {
       <header className="topbar">
         <div>
           <p className="eyebrow">Offline-first PWA</p>
-          <h1>Jousaali Logi</h1>
+          <h1>Jõusaali Logi</h1>
         </div>
       </header>
       <main className="page-shell">

@@ -19,7 +19,7 @@ export function createInMemorySeed() {
   const workoutDays: WorkoutDayRecord[] = [
     {
       id: createId('day'),
-      name: 'Paev 1',
+      name: 'Päev 1',
       sortOrder: 0,
       isArchived: false,
       createdAt: timestamp,
@@ -27,7 +27,7 @@ export function createInMemorySeed() {
     },
     {
       id: createId('day'),
-      name: 'Paev 2',
+      name: 'Päev 2',
       sortOrder: 1,
       isArchived: false,
       createdAt: timestamp,

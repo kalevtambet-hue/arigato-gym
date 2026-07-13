@@ -42,7 +42,7 @@ export function HistoryPage() {
       </div>
       <div className="panel">
         <label>
-          Filtreeri harjutuse jargi
+          Filtreeri harjutuse järgi
           <input value={exerciseFilter} onChange={(event) => setExerciseFilter(event.target.value)} />
         </label>
       </div>

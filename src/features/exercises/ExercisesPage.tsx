@@ -124,7 +124,7 @@ export function ExercisesPage() {
             Lisa harjutus
           </button>
           <button type="button" className="secondary-button" onClick={() => setDayFormOpen(true)}>
-            Lisa treeningpaev
+            Lisa treeningpäev
           </button>
         </div>
       </div>
@@ -164,7 +164,7 @@ export function ExercisesPage() {
         </article>
 
         <article className="panel">
-          <h3>Treeningpaevad</h3>
+          <h3>Treeningpäevad</h3>
           <div className="day-tabs">
             {(workoutDays ?? []).map((day) => (
               <button
@@ -187,7 +187,7 @@ export function ExercisesPage() {
               onRemove={removeDayExercise}
             />
           ) : (
-            <p className="empty-card">Vali paev, et selle harjutusi seadistada.</p>
+            <p className="empty-card">Vali päev, et selle harjutusi seadistada.</p>
           )}
         </article>
       </div>
@@ -218,7 +218,7 @@ function ExerciseForm({
         <input value={machineNumber} onChange={(event) => setMachineNumber(event.target.value)} />
       </label>
       <label>
-        Markus
+        Märkus
         <input value={notes} onChange={(event) => setNotes(event.target.value)} />
       </label>
       <div className="button-row">
@@ -249,9 +249,9 @@ function WorkoutDayForm({
 
   return (
     <div className="modal-card">
-      <h3>Uus treeningpaev</h3>
+      <h3>Uus treeningpäev</h3>
       <label>
-        Paeva nimi
+        Päeva nimi
         <input value={name} onChange={(event) => setName(event.target.value)} />
       </label>
       <div className="button-row">
@@ -264,7 +264,7 @@ function WorkoutDayForm({
           onClick={() => void onSave(name.trim())}
           disabled={!name.trim()}
         >
-          Salvesta paev
+          Salvesta päev
         </button>
       </div>
     </div>
@@ -325,11 +325,11 @@ function WorkoutDayEditor({
             setSelectedExerciseId('');
           }}
         >
-          Lisa paeva
+          Lisa päeva
         </button>
       </div>
 
-      {items.length === 0 ? <p className="empty-card">Paevas veel harjutusi ei ole.</p> : null}
+      {items.length === 0 ? <p className="empty-card">Päevas veel harjutusi ei ole.</p> : null}
 
       {items.map((item) => (
         <div key={item.id} className="config-card">

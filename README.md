@@ -1,15 +1,15 @@
-# Jousaali Logi
+# Jõusaali Logi
 
-Offline-first mobiilisobiv PWA jousaali treeningute logimiseks. Rakendus kasutab IndexedDB-d Dexie kaudu ja tootab peale esmast laadimist ka ilma internetita.
+Offline-first mobiilisobiv PWA jõusaali treeningute logimiseks. Rakendus kasutab IndexedDB-d Dexie kaudu ja töötab peale esmast laadimist ka ilma internetita.
 
 ## Funktsioonid
 
-- harjutuste register koos masina numbri ja markustega
-- treeningpaevad nagu `Paev 1`, `Paev 2`, `Paev 3`
-- paevapohised sihid ja progress `paev + harjutus` kombinatsioonina
-- tanaase treeningu seeriate eraldi logimine
+- harjutuste register koos masina numbri ja märkustega
+- treeningpäevad nagu `Päev 1`, `Päev 2`, `Päev 3`
+- päevapõhised sihid ja progress `päev + harjutus` kombinatsioonina
+- tänase treeningu seeriate eraldi logimine
 - topeltprogressioon vaikimisi `range` moodis
-- ajalugu kuupaeva ja harjutuse kaupa
+- ajalugu kuupäeva ja harjutuse kaupa
 - CSV eksport/import
 - JSON varundus eksport/import
 - installitav PWA
@@ -57,12 +57,12 @@ Build output directory: dist
 ## PWA
 
 - Ava rakendus mobiilibrauseris.
-- Lisa see avakuvale brauseri `Install` voi `Add to Home Screen` valikuga.
+- Lisa see avakuvale brauseri `Install` või `Add to Home Screen` valikuga.
 - Pärast esmast laadimist cache'ib service worker rakenduse shelli offline kasutuseks.
 
 ## Andmete eksport ja taastamine
 
 - `Ekspordi CSV` salvestab tabelid eraldi CSV failidena.
 - `Impordi CSV` ootab samu failinimesid, mida eksport tekitab.
-- `Ekspordi varundus` loob taieliku JSON varukoopia.
+- `Ekspordi varundus` loob täieliku JSON varukoopia.
 - `Impordi varundus` taastab kogu andmebaasi JSON failist.
