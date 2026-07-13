@@ -79,6 +79,13 @@ async function removeDayExercise(id: string) {
   await db.dayExercises.delete(id);
 }
 
+async function removeExercise(id: string) {
+  await db.transaction('rw', db.exercises, db.dayExercises, async () => {
+    await db.dayExercises.where('exerciseId').equals(id).delete();
+    await db.exercises.delete(id);
+  });
+}
+
 export function ExercisesPage() {
   void ensureSeedData();
   const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), []);
@@ -155,8 +162,19 @@ export function ExercisesPage() {
           <ul className="stack-list">
             {(exercises ?? []).map((exercise) => (
               <li key={exercise.id} className="list-card">
-                <strong>{exercise.name}</strong>
-                <span>Masin #{exercise.machineNumber || '-'}</span>
+                <div className="config-head">
+                  <div>
+                    <strong>{exercise.name}</strong>
+                    <span>Masin #{exercise.machineNumber || '-'}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => void removeExercise(exercise.id)}
+                  >
+                    Kustuta
+                  </button>
+                </div>
               </li>
             ))}
             {exercises?.length === 0 ? <li className="empty-card">Harjutusi veel ei ole.</li> : null}
