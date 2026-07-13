@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { db } from '../../db/appDb';
 import { ensureSeedData } from '../../db/repositories';
 import type { DayExerciseRecord, ExerciseRecord, WorkoutDayRecord } from '../../db/types';
@@ -35,6 +35,13 @@ async function addWorkoutDay(name: string) {
     isArchived: false,
     createdAt: timestamp,
     updatedAt: timestamp,
+  });
+}
+
+async function updateWorkoutDay(id: string, name: string) {
+  await db.workoutDays.update(id, {
+    name,
+    updatedAt: nowIso(),
   });
 }
 
@@ -209,6 +216,7 @@ export function ExercisesPage() {
               exercises={exercises ?? []}
               items={groupedDayExercises.get(selectedDayId) ?? []}
               onAddExercise={addDayExercise}
+              onUpdateDay={updateWorkoutDay}
               onUpdate={updateDayExercise}
               onRemove={removeDayExercise}
             />
@@ -302,6 +310,7 @@ function WorkoutDayEditor({
   exercises,
   items,
   onAddExercise,
+  onUpdateDay,
   onUpdate,
   onRemove,
 }: {
@@ -309,6 +318,7 @@ function WorkoutDayEditor({
   exercises: ExerciseRecord[];
   items: DayExerciseView[];
   onAddExercise: (workoutDayId: string, exerciseId: string) => Promise<void>;
+  onUpdateDay: (id: string, name: string) => Promise<void>;
   onUpdate: (
     id: string,
     changes: Partial<
@@ -326,6 +336,11 @@ function WorkoutDayEditor({
   onRemove: (id: string) => Promise<void>;
 }) {
   const [selectedExerciseId, setSelectedExerciseId] = useState('');
+  const [dayName, setDayName] = useState(day?.name ?? '');
+
+  useEffect(() => {
+    setDayName(day?.name ?? '');
+  }, [day?.id, day?.name]);
 
   if (!day) {
     return null;
@@ -333,6 +348,20 @@ function WorkoutDayEditor({
 
   return (
     <div className="stack">
+      <div className="inline-form">
+        <label>
+          Päeva nimi
+          <input value={dayName} onChange={(event) => setDayName(event.target.value)} />
+        </label>
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={!dayName.trim() || dayName.trim() === day.name}
+          onClick={() => void onUpdateDay(day.id, dayName.trim())}
+        >
+          Salvesta nimi
+        </button>
+      </div>
       <div className="inline-form">
         <select value={selectedExerciseId} onChange={(event) => setSelectedExerciseId(event.target.value)}>
           <option value="">Vali harjutus</option>

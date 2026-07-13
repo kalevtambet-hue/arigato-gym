@@ -107,4 +107,21 @@ describe('ExercisesPage', () => {
     expect(screen.queryByLabelText('Min kordused')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Max kordused')).not.toBeInTheDocument();
   });
+
+  it('renames a workout day', async () => {
+    const seed = createInMemorySeed();
+    await db.workoutDays.bulkAdd(seed.workoutDays);
+
+    render(<ExercisesPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Päev 1' }));
+    const nameInput = await screen.findByLabelText('Päeva nimi');
+
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Ülakeha');
+    await user.click(screen.getByRole('button', { name: 'Salvesta nimi' }));
+
+    expect(await screen.findByRole('button', { name: 'Ülakeha' })).toBeInTheDocument();
+  });
 });
