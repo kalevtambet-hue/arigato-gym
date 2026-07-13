@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../db/appDb';
 import { createInMemorySeed } from '../../db/repositories';
 import { createId } from '../../lib/id';
@@ -24,11 +24,6 @@ describe('ExercisesPage', () => {
         await db.exercises.clear();
       },
     );
-  });
-
-  afterEach(async () => {
-    await db.delete();
-    db.close();
   });
 
   it('deletes a base exercise and its linked day exercise rows', async () => {
@@ -71,5 +66,45 @@ describe('ExercisesPage', () => {
       expect(screen.queryByText('Leg Press')).not.toBeInTheDocument();
       expect(await db.dayExercises.where('exerciseId').equals(exerciseId).count()).toBe(0);
     });
+  });
+
+  it('shows a single reps field when rep mode is fixed', async () => {
+    const seed = createInMemorySeed();
+    const timestamp = nowIso();
+    const exerciseId = createId('exercise');
+
+    await db.workoutDays.bulkAdd(seed.workoutDays);
+    await db.exercises.add({
+      id: exerciseId,
+      name: 'Chest Press',
+      machineNumber: '12',
+      notes: '',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await db.dayExercises.add({
+      id: createId('day-exercise'),
+      workoutDayId: seed.workoutDays[0].id,
+      exerciseId,
+      sortOrder: 0,
+      targetSets: 3,
+      repMode: 'fixed',
+      targetRepsMin: 12,
+      targetRepsMax: 12,
+      currentWeight: 60,
+      weightStep: 5,
+      restSeconds: 90,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    render(<ExercisesPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Päev 1' }));
+
+    expect(await screen.findByLabelText('Kordused')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Min kordused')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Max kordused')).not.toBeInTheDocument();
   });
 });

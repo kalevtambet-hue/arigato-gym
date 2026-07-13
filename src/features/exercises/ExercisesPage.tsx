@@ -72,7 +72,15 @@ async function updateDayExercise(
     >
   >,
 ) {
-  await db.dayExercises.update(id, { ...changes, updatedAt: nowIso() });
+  const nextChanges = { ...changes };
+  if (changes.repMode === 'fixed') {
+    const fixedReps = changes.targetRepsMin ?? changes.targetRepsMax;
+    if (fixedReps !== undefined) {
+      nextChanges.targetRepsMin = fixedReps;
+      nextChanges.targetRepsMax = fixedReps;
+    }
+  }
+  await db.dayExercises.update(id, { ...nextChanges, updatedAt: nowIso() });
 }
 
 async function removeDayExercise(id: string) {
@@ -371,23 +379,39 @@ function WorkoutDayEditor({
               <select
                 value={item.repMode}
                 onChange={(event) =>
-                  void onUpdate(item.id, { repMode: event.target.value as DayExerciseRecord['repMode'] })
+                  void onUpdate(item.id, {
+                    repMode: event.target.value as DayExerciseRecord['repMode'],
+                    targetRepsMax:
+                      event.target.value === 'fixed' ? item.targetRepsMin : item.targetRepsMax,
+                  })
                 }
               >
                 <option value="range">Vahemik</option>
                 <option value="fixed">Fikseeritud</option>
               </select>
             </label>
-            <NumberField
-              label="Min kordused"
-              value={item.targetRepsMin}
-              onChange={(value) => void onUpdate(item.id, { targetRepsMin: value })}
-            />
-            <NumberField
-              label="Max kordused"
-              value={item.targetRepsMax}
-              onChange={(value) => void onUpdate(item.id, { targetRepsMax: value })}
-            />
+            {item.repMode === 'fixed' ? (
+              <NumberField
+                label="Kordused"
+                value={item.targetRepsMin}
+                onChange={(value) =>
+                  void onUpdate(item.id, { targetRepsMin: value, targetRepsMax: value })
+                }
+              />
+            ) : (
+              <>
+                <NumberField
+                  label="Min kordused"
+                  value={item.targetRepsMin}
+                  onChange={(value) => void onUpdate(item.id, { targetRepsMin: value })}
+                />
+                <NumberField
+                  label="Max kordused"
+                  value={item.targetRepsMax}
+                  onChange={(value) => void onUpdate(item.id, { targetRepsMax: value })}
+                />
+              </>
+            )}
             <NumberField
               label="Raskus (kg)"
               value={item.currentWeight}
