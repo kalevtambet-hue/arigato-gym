@@ -25,12 +25,22 @@ async function addExercise(name: string, machineNumber: string, notes: string) {
   });
 }
 
+async function updateExercise(id: string, name: string, machineNumber: string, notes: string) {
+  await db.exercises.update(id, {
+    name,
+    machineNumber,
+    notes,
+    updatedAt: nowIso(),
+  });
+}
+
 async function addWorkoutDay(name: string) {
   const sortOrder = await db.workoutDays.count();
   const timestamp = nowIso();
   await db.workoutDays.add({
     id: createId('day'),
     name,
+    notes: '',
     sortOrder,
     isArchived: false,
     createdAt: timestamp,
@@ -38,9 +48,10 @@ async function addWorkoutDay(name: string) {
   });
 }
 
-async function updateWorkoutDay(id: string, name: string) {
+async function updateWorkoutDayDetails(id: string, name: string, notes: string) {
   await db.workoutDays.update(id, {
     name,
+    notes,
     updatedAt: nowIso(),
   });
 }
@@ -101,6 +112,51 @@ async function removeExercise(id: string) {
   });
 }
 
+async function duplicateWorkoutDay(day: WorkoutDayRecord, items: DayExerciseView[]) {
+  const timestamp = nowIso();
+  const nextSortOrder = await db.workoutDays.count();
+  const workoutDayId = createId('day');
+
+  await db.transaction('rw', db.workoutDays, db.dayExercises, async () => {
+    await db.workoutDays.add({
+      id: workoutDayId,
+      name: `${day.name} koopia`,
+      notes: day.notes,
+      sortOrder: nextSortOrder,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    for (const item of items) {
+      await db.dayExercises.add({
+        id: createId('day-exercise'),
+        workoutDayId,
+        exerciseId: item.exerciseId,
+        sortOrder: item.sortOrder,
+        targetSets: item.targetSets,
+        repMode: item.repMode,
+        targetRepsMin: item.targetRepsMin,
+        targetRepsMax: item.targetRepsMax,
+        currentWeight: item.currentWeight,
+        weightStep: item.weightStep,
+        restSeconds: item.restSeconds,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+  });
+
+  return workoutDayId;
+}
+
+async function removeWorkoutDay(id: string) {
+  await db.transaction('rw', db.workoutDays, db.dayExercises, async () => {
+    await db.dayExercises.where('workoutDayId').equals(id).delete();
+    await db.workoutDays.delete(id);
+  });
+}
+
 export function ExercisesPage() {
   void ensureSeedData();
   const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), []);
@@ -110,6 +166,7 @@ export function ExercisesPage() {
   );
   const dayExercises = useLiveQuery(() => db.dayExercises.toArray(), []);
   const [exerciseFormOpen, setExerciseFormOpen] = useState(false);
+  const [editingExercise, setEditingExercise] = useState<ExerciseRecord | null>(null);
   const [dayFormOpen, setDayFormOpen] = useState(false);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
 
@@ -153,9 +210,15 @@ export function ExercisesPage() {
 
       {exerciseFormOpen ? (
         <ExerciseForm
+          initialExercise={editingExercise}
           onClose={() => setExerciseFormOpen(false)}
           onSave={async (name, machineNumber, notes) => {
-            await addExercise(name, machineNumber, notes);
+            if (editingExercise) {
+              await updateExercise(editingExercise.id, name, machineNumber, notes);
+            } else {
+              await addExercise(name, machineNumber, notes);
+            }
+            setEditingExercise(null);
             setExerciseFormOpen(false);
           }}
         />
@@ -182,13 +245,31 @@ export function ExercisesPage() {
                     <strong>{exercise.name}</strong>
                     <span>Masin #{exercise.machineNumber || '-'}</span>
                   </div>
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => void removeExercise(exercise.id)}
-                  >
-                    Kustuta
-                  </button>
+                  <div className="button-row">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      aria-label={`Muuda ${exercise.name}`}
+                      onClick={() => {
+                        setEditingExercise(exercise);
+                        setExerciseFormOpen(true);
+                      }}
+                    >
+                      Muuda
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      aria-label={`Kustuta ${exercise.name}`}
+                      onClick={() => {
+                        if (window.confirm(`Kustutada harjutus "${exercise.name}"?`)) {
+                          void removeExercise(exercise.id);
+                        }
+                      }}
+                    >
+                      Kustuta
+                    </button>
+                  </div>
                 </div>
               </li>
             ))}
@@ -216,7 +297,17 @@ export function ExercisesPage() {
               exercises={exercises ?? []}
               items={groupedDayExercises.get(selectedDayId) ?? []}
               onAddExercise={addDayExercise}
-              onUpdateDay={updateWorkoutDay}
+              onDuplicateDay={async (day) => {
+                const copiedId = await duplicateWorkoutDay(day, groupedDayExercises.get(day.id) ?? []);
+                setSelectedDayId(copiedId);
+              }}
+              onRemoveDay={async (day) => {
+                if (window.confirm(`Kustutada päev "${day.name}"?`)) {
+                  await removeWorkoutDay(day.id);
+                  setSelectedDayId((current) => (current === day.id ? null : current));
+                }
+              }}
+              onUpdateDay={updateWorkoutDayDetails}
               onUpdate={updateDayExercise}
               onRemove={removeDayExercise}
             />
@@ -230,19 +321,27 @@ export function ExercisesPage() {
 }
 
 function ExerciseForm({
+  initialExercise,
   onClose,
   onSave,
 }: {
+  initialExercise: ExerciseRecord | null;
   onClose: () => void;
   onSave: (name: string, machineNumber: string, notes: string) => Promise<void>;
 }) {
-  const [name, setName] = useState('');
-  const [machineNumber, setMachineNumber] = useState('');
-  const [notes, setNotes] = useState('');
+  const [name, setName] = useState(initialExercise?.name ?? '');
+  const [machineNumber, setMachineNumber] = useState(initialExercise?.machineNumber ?? '');
+  const [notes, setNotes] = useState(initialExercise?.notes ?? '');
+
+  useEffect(() => {
+    setName(initialExercise?.name ?? '');
+    setMachineNumber(initialExercise?.machineNumber ?? '');
+    setNotes(initialExercise?.notes ?? '');
+  }, [initialExercise]);
 
   return (
     <div className="modal-card">
-      <h3>Uus harjutus</h3>
+      <h3>{initialExercise ? 'Muuda harjutust' : 'Uus harjutus'}</h3>
       <label>
         Harjutuse nimi
         <input value={name} onChange={(event) => setName(event.target.value)} />
@@ -310,6 +409,8 @@ function WorkoutDayEditor({
   exercises,
   items,
   onAddExercise,
+  onDuplicateDay,
+  onRemoveDay,
   onUpdateDay,
   onUpdate,
   onRemove,
@@ -318,7 +419,9 @@ function WorkoutDayEditor({
   exercises: ExerciseRecord[];
   items: DayExerciseView[];
   onAddExercise: (workoutDayId: string, exerciseId: string) => Promise<void>;
-  onUpdateDay: (id: string, name: string) => Promise<void>;
+  onDuplicateDay: (day: WorkoutDayRecord) => Promise<void>;
+  onRemoveDay: (day: WorkoutDayRecord) => Promise<void>;
+  onUpdateDay: (id: string, name: string, notes: string) => Promise<void>;
   onUpdate: (
     id: string,
     changes: Partial<
@@ -337,10 +440,12 @@ function WorkoutDayEditor({
 }) {
   const [selectedExerciseId, setSelectedExerciseId] = useState('');
   const [dayName, setDayName] = useState(day?.name ?? '');
+  const [dayNotes, setDayNotes] = useState(day?.notes ?? '');
 
   useEffect(() => {
     setDayName(day?.name ?? '');
-  }, [day?.id, day?.name]);
+    setDayNotes(day?.notes ?? '');
+  }, [day?.id, day?.name, day?.notes]);
 
   if (!day) {
     return null;
@@ -353,13 +458,23 @@ function WorkoutDayEditor({
           Päeva nimi
           <input value={dayName} onChange={(event) => setDayName(event.target.value)} />
         </label>
+        <label>
+          Päeva märkus
+          <input value={dayNotes} onChange={(event) => setDayNotes(event.target.value)} />
+        </label>
         <button
           type="button"
           className="secondary-button"
-          disabled={!dayName.trim() || dayName.trim() === day.name}
-          onClick={() => void onUpdateDay(day.id, dayName.trim())}
+          disabled={!dayName.trim() || (dayName.trim() === day.name && dayNotes === day.notes)}
+          onClick={() => void onUpdateDay(day.id, dayName.trim(), dayNotes.trim())}
         >
           Salvesta nimi
+        </button>
+        <button type="button" className="secondary-button" onClick={() => void onDuplicateDay(day)}>
+          Duplikeeri päev
+        </button>
+        <button type="button" className="ghost-button" onClick={() => void onRemoveDay(day)}>
+          Kustuta päev
         </button>
       </div>
       <div className="inline-form">
@@ -393,7 +508,15 @@ function WorkoutDayEditor({
               <strong>{item.exercise?.name ?? 'Harjutus'}</strong>
               <p>Masin #{item.exercise?.machineNumber || '-'}</p>
             </div>
-            <button type="button" className="ghost-button" onClick={() => void onRemove(item.id)}>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => {
+                if (window.confirm(`Eemaldada harjutus päevast?`)) {
+                  void onRemove(item.id);
+                }
+              }}
+            >
               Eemalda
             </button>
           </div>

@@ -20,6 +20,7 @@ export function createInMemorySeed() {
     {
       id: createId('day'),
       name: 'Päev 1',
+      notes: '',
       sortOrder: 0,
       isArchived: false,
       createdAt: timestamp,
@@ -28,6 +29,7 @@ export function createInMemorySeed() {
     {
       id: createId('day'),
       name: 'Päev 2',
+      notes: '',
       sortOrder: 1,
       isArchived: false,
       createdAt: timestamp,

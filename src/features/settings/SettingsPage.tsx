@@ -38,6 +38,7 @@ export function SettingsPage() {
           next.workoutDays = rows.map((row) => ({
             id: String(row.id ?? ''),
             name: String(row.name ?? ''),
+            notes: String(row.notes ?? ''),
             sortOrder: Number(row.sortOrder ?? 0),
             isArchived: String(row.isArchived ?? 'false') === 'true',
             createdAt: String(row.createdAt ?? ''),

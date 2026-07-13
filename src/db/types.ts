@@ -12,6 +12,7 @@ export type ExerciseRecord = {
 export type WorkoutDayRecord = {
   id: string;
   name: string;
+  notes: string;
   sortOrder: number;
   isArchived: boolean;
   createdAt: string;
