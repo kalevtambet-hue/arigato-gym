@@ -1,6 +1,6 @@
-# Jõusaali Logi
+# Treeninguabiline
 
-Offline-first mobiilisobiv PWA jõusaali treeningute logimiseks. Rakendus kasutab IndexedDB-d Dexie kaudu ja töötab peale esmast laadimist ka ilma internetita.
+Offline-first mobiilisobiv PWA treeningute logimiseks. Rakendus kasutab IndexedDB-d Dexie kaudu ja töötab peale esmast laadimist ka ilma internetita.
 
 ## Funktsioonid
 

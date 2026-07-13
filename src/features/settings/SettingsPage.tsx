@@ -121,7 +121,7 @@ export function SettingsPage() {
               className="primary-button"
               onClick={async () => {
                 const payload = await exportBackup();
-                downloadText('jousaali-logi-varundus.json', JSON.stringify(payload, null, 2), 'application/json');
+                downloadText('treeninguabiline-varundus.json', JSON.stringify(payload, null, 2), 'application/json');
               }}
             >
               Ekspordi varundus

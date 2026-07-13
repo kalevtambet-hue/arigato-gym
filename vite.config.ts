@@ -8,9 +8,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Jousaali Logi',
-        short_name: 'JLogi',
-        description: 'Offline-first jousaali treeninglogi',
+        name: 'Treeninguabiline',
+        short_name: 'Treeninguabiline',
+        description: 'Offline-first treeningute abiline',
         theme_color: '#0b1120',
         background_color: '#020617',
         display: 'standalone',
