@@ -149,6 +149,18 @@ async function moveSessionExerciseToNext(
   });
 }
 
+async function cancelWorkout(sessionId: string) {
+  const sessionExerciseIds = await db.sessionExercises.where('workoutSessionId').equals(sessionId).primaryKeys();
+
+  await db.transaction('rw', db.setResults, db.sessionExercises, db.sessions, async () => {
+    if (sessionExerciseIds.length > 0) {
+      await db.setResults.where('workoutSessionExerciseId').anyOf(sessionExerciseIds as string[]).delete();
+    }
+    await db.sessionExercises.where('workoutSessionId').equals(sessionId).delete();
+    await db.sessions.delete(sessionId);
+  });
+}
+
 export function WorkoutPage() {
   void ensureSeedData();
   const workoutDays = useLiveQuery(
@@ -438,6 +450,20 @@ export function WorkoutPage() {
                 Ei tulnud täis
               </button>
             </div>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={async () => {
+                if (!activeSession) {
+                  return;
+                }
+                if (window.confirm('Katkestada käimasolev treening?')) {
+                  await cancelWorkout(activeSession.id);
+                }
+              }}
+            >
+              Katkesta treening
+            </button>
           </article>
 
           {upcomingExercises.length > 0 ? (

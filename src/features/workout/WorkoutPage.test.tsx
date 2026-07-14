@@ -1,6 +1,6 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db/appDb';
 import { createId } from '../../lib/id';
 import { WorkoutPage } from './WorkoutPage';
@@ -295,5 +295,83 @@ describe('WorkoutPage', () => {
     await user.click(screen.getByRole('button', { name: 'Tee Leg Press järgmisena' }));
 
     expect(await screen.findByRole('heading', { name: 'Leg Press' })).toBeInTheDocument();
+  });
+
+  it('allows cancelling an active workout and returns to day preview', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const exerciseId = createId('exercise');
+    const sessionId = createId('session');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: 'Testpäev',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.exercises.add({
+      id: exerciseId,
+      name: 'Chest Press',
+      machineNumber: '12',
+      notes: '',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.dayExercises.add({
+      id: createId('day-exercise'),
+      workoutDayId: dayId,
+      exerciseId,
+      sortOrder: 0,
+      targetSets: 3,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      restSeconds: 90,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.add({
+      id: createId('session-exercise'),
+      workoutSessionId: sessionId,
+      dayExerciseId: createId('day-exercise'),
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Katkesta treening' }));
+
+    await waitFor(async () => {
+      expect(await db.sessions.count()).toBe(0);
+      expect(screen.getByText('Valitud päev')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Alusta treeningut' })).toBeInTheDocument();
+    });
   });
 });
