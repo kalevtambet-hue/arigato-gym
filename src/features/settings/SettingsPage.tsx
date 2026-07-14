@@ -108,6 +108,7 @@ export function SettingsPage() {
             setNumber: Number(row.setNumber ?? 0),
             status: row.status === 'success' ? 'success' : 'failed',
             completedReps: Number(row.completedReps ?? 0),
+            usedWeight: row.usedWeight === undefined || row.usedWeight === '' ? null : Number(row.usedWeight),
           }));
           break;
         default:

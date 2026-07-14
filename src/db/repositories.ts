@@ -111,7 +111,12 @@ export async function importBackup(payload: BackupPayload) {
           successesRequired: item.successesRequired ?? 1,
         })),
       );
-      await db.setResults.bulkAdd(payload.setResults);
+      await db.setResults.bulkAdd(
+        payload.setResults.map((item) => ({
+          ...item,
+          usedWeight: item.usedWeight ?? null,
+        })),
+      );
     },
   );
 }

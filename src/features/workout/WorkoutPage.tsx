@@ -146,6 +146,13 @@ async function saveSetResult(
     setNumber,
     status,
     completedReps,
+    usedWeight: isDurationMode(sessionExercise.repMode) ? null : sessionExercise.currentWeight,
+  });
+}
+
+async function updateSessionExerciseWeight(id: string, currentWeight: number) {
+  await db.sessionExercises.update(id, {
+    currentWeight,
   });
 }
 
@@ -287,6 +294,10 @@ export function WorkoutPage() {
     sessionExerciseId: string;
     setNumber: number;
     reps: string;
+  } | null>(null);
+  const [weightEditTarget, setWeightEditTarget] = useState<{
+    sessionExerciseId: string;
+    value: string;
   } | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [completedSummary, setCompletedSummary] = useState<
@@ -491,6 +502,20 @@ export function WorkoutPage() {
             </p>
             <p className="set-badge">Seeria {nextSetNumber}</p>
             <div className="button-stack">
+              {!isDurationMode(nextExercise.repMode) ? (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() =>
+                    setWeightEditTarget({
+                      sessionExerciseId: nextExercise.id,
+                      value: String(nextExercise.currentWeight),
+                    })
+                  }
+                >
+                  Muuda raskust
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="success-button"
@@ -684,6 +709,46 @@ export function WorkoutPage() {
               }}
             >
               Salvesta seeria
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {weightEditTarget ? (
+        <div className="modal-card">
+          <h3>Muuda raskust</h3>
+          <label htmlFor="sessionWeight">
+            Uus raskus (kg)
+            <input
+              id="sessionWeight"
+              type="number"
+              min="0"
+              value={weightEditTarget.value}
+              onChange={(event) =>
+                setWeightEditTarget((current) =>
+                  current ? { ...current, value: event.target.value } : current,
+                )
+              }
+            />
+          </label>
+          <div className="button-row">
+            <button type="button" className="secondary-button" onClick={() => setWeightEditTarget(null)}>
+              Loobu
+            </button>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={async () => {
+                const nextWeight = Number(weightEditTarget.value);
+                if (!Number.isFinite(nextWeight) || nextWeight < 0) {
+                  return;
+                }
+
+                await updateSessionExerciseWeight(weightEditTarget.sessionExerciseId, nextWeight);
+                setWeightEditTarget(null);
+              }}
+            >
+              Salvesta raskus
             </button>
           </div>
         </div>
