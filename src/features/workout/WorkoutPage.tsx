@@ -118,6 +118,37 @@ async function completeWorkout(
   });
 }
 
+async function moveSessionExerciseToNext(
+  targetId: string,
+  sessionExercises: WorkoutSessionExerciseRecord[],
+  setResults: SetResultRecord[],
+) {
+  const resultsCount = new Map<string, number>();
+  for (const item of setResults) {
+    resultsCount.set(item.workoutSessionExerciseId, (resultsCount.get(item.workoutSessionExerciseId) ?? 0) + 1);
+  }
+
+  const completed = sessionExercises.filter((item) => (resultsCount.get(item.id) ?? 0) >= item.targetSets);
+  const pending = sessionExercises.filter((item) => (resultsCount.get(item.id) ?? 0) < item.targetSets);
+  const target = pending.find((item) => item.id === targetId);
+  if (!target) {
+    return;
+  }
+
+  const reorderedPending = [target, ...pending.filter((item) => item.id !== targetId)];
+  const reordered = [...completed, ...reorderedPending];
+
+  await db.transaction('rw', db.sessionExercises, async () => {
+    await Promise.all(
+      reordered.map((item, index) =>
+        db.sessionExercises.update(item.id, {
+          orderIndex: index,
+        }),
+      ),
+    );
+  });
+}
+
 export function WorkoutPage() {
   void ensureSeedData();
   const workoutDays = useLiveQuery(
@@ -209,6 +240,18 @@ export function WorkoutPage() {
       (item) => (resultsCount.get(item.id) ?? 0) < item.targetSets,
     );
   }, [sessionExercises, setResults]);
+
+  const upcomingExercises = useMemo(() => {
+    const resultsCount = new Map<string, number>();
+    for (const item of setResults ?? []) {
+      resultsCount.set(item.workoutSessionExerciseId, (resultsCount.get(item.workoutSessionExerciseId) ?? 0) + 1);
+    }
+
+    return (sessionExercises ?? []).filter((item) => {
+      const remaining = (resultsCount.get(item.id) ?? 0) < item.targetSets;
+      return remaining && item.id !== nextExercise?.id;
+    });
+  }, [nextExercise?.id, sessionExercises, setResults]);
 
   const nextSetNumber = useMemo(() => {
     if (!nextExercise) {
@@ -354,47 +397,74 @@ export function WorkoutPage() {
       ) : null}
 
       {activeSession && nextExercise ? (
-        <article className="workout-card">
-          <p className="eyebrow">Järgmine harjutus</p>
-          <h3>{nextExercise.exerciseName}</h3>
-          <p className="muted">
-            Masin #{nextExercise.machineNumber || '-'} · {nextExercise.targetSets} x{' '}
-            {formatTarget(
-              nextExercise.repMode,
-              nextExercise.targetRepsMin,
-              nextExercise.targetRepsMax,
-              nextExercise.currentWeight,
-            )}
-          </p>
-          <p className="set-badge">Seeria {nextSetNumber}</p>
-          <div className="button-stack">
-            <button
-              type="button"
-              className="success-button"
-              onClick={() =>
-                void saveSetResult(
-                  nextExercise,
-                  nextSetNumber,
-                  'success',
-                  getSuccessValue(
-                    nextExercise.repMode,
-                    nextExercise.targetRepsMin,
-                    nextExercise.targetRepsMax,
-                  ),
-                )
-              }
-            >
-              Tehtud
-            </button>
-            <button
-              type="button"
-              className="warning-button"
-              onClick={() => setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' })}
-            >
-              Ei tulnud täis
-            </button>
-          </div>
-        </article>
+        <>
+          <article className="workout-card">
+            <p className="eyebrow">Järgmine harjutus</p>
+            <h3>{nextExercise.exerciseName}</h3>
+            <p className="muted">
+              Masin #{nextExercise.machineNumber || '-'} · {nextExercise.targetSets} x{' '}
+              {formatTarget(
+                nextExercise.repMode,
+                nextExercise.targetRepsMin,
+                nextExercise.targetRepsMax,
+                nextExercise.currentWeight,
+              )}
+            </p>
+            <p className="set-badge">Seeria {nextSetNumber}</p>
+            <div className="button-stack">
+              <button
+                type="button"
+                className="success-button"
+                onClick={() =>
+                  void saveSetResult(
+                    nextExercise,
+                    nextSetNumber,
+                    'success',
+                    getSuccessValue(
+                      nextExercise.repMode,
+                      nextExercise.targetRepsMin,
+                      nextExercise.targetRepsMax,
+                    ),
+                  )
+                }
+              >
+                Tehtud
+              </button>
+              <button
+                type="button"
+                className="warning-button"
+                onClick={() => setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' })}
+              >
+                Ei tulnud täis
+              </button>
+            </div>
+          </article>
+
+          {upcomingExercises.length > 0 ? (
+            <div className="panel">
+              <p className="eyebrow">Tulemas</p>
+              <ul className="stack-list">
+                {upcomingExercises.map((item) => (
+                  <li key={item.id} className="list-card">
+                    <strong>{item.exerciseName}</strong>
+                    <span>
+                      Masin #{item.machineNumber || '-'} · {item.targetSets} x{' '}
+                      {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}
+                    </span>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      aria-label={`Tee ${item.exerciseName} järgmisena`}
+                      onClick={() => void moveSessionExerciseToNext(item.id, sessionExercises ?? [], setResults ?? [])}
+                    >
+                      Tee järgmisena
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       {activeSession && !nextExercise && completedSummary.length === 0 ? (

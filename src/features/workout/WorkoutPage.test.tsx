@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../db/appDb';
 import { createId } from '../../lib/id';
@@ -216,5 +217,83 @@ describe('WorkoutPage', () => {
 
     expect(await screen.findByText((content) => content.includes('1') && content.includes('10-15 min'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Tehtud' })).toBeInTheDocument();
+  });
+
+  it('allows moving an upcoming exercise to be next in the active workout', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.bulkAdd([
+      {
+        id: createId('session-exercise'),
+        workoutSessionId: sessionId,
+        dayExerciseId: createId('day-exercise'),
+        exerciseName: 'Chest Press',
+        machineNumber: '12',
+        targetSets: 3,
+        repMode: 'range',
+        targetRepsMin: 10,
+        targetRepsMax: 15,
+        currentWeight: 60,
+        weightStep: 5,
+        orderIndex: 0,
+      },
+      {
+        id: createId('session-exercise'),
+        workoutSessionId: sessionId,
+        dayExerciseId: createId('day-exercise'),
+        exerciseName: 'Shoulder Press',
+        machineNumber: '14',
+        targetSets: 3,
+        repMode: 'range',
+        targetRepsMin: 10,
+        targetRepsMax: 15,
+        currentWeight: 40,
+        weightStep: 5,
+        orderIndex: 1,
+      },
+      {
+        id: createId('session-exercise'),
+        workoutSessionId: sessionId,
+        dayExerciseId: createId('day-exercise'),
+        exerciseName: 'Leg Press',
+        machineNumber: '17',
+        targetSets: 3,
+        repMode: 'range',
+        targetRepsMin: 10,
+        targetRepsMax: 15,
+        currentWeight: 100,
+        weightStep: 5,
+        orderIndex: 2,
+      },
+    ]);
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    expect(await screen.findByRole('heading', { name: 'Chest Press' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Tee Leg Press järgmisena' }));
+
+    expect(await screen.findByRole('heading', { name: 'Leg Press' })).toBeInTheDocument();
   });
 });
