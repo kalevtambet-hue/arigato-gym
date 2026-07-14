@@ -66,6 +66,7 @@ async function addDayExercise(workoutDayId: string, exerciseId: string) {
     exerciseId,
     sortOrder,
     targetSets: 3,
+    successesRequired: 1,
     repMode: 'range',
     targetRepsMin: 10,
     targetRepsMax: 15,
@@ -83,6 +84,7 @@ async function updateDayExercise(
     Pick<
       DayExerciseRecord,
       | 'targetSets'
+      | 'successesRequired'
       | 'repMode'
       | 'targetRepsMin'
       | 'targetRepsMax'
@@ -139,6 +141,7 @@ async function duplicateWorkoutDay(day: WorkoutDayRecord, items: DayExerciseView
         exerciseId: item.exerciseId,
         sortOrder: item.sortOrder,
         targetSets: item.targetSets,
+        successesRequired: item.successesRequired,
         repMode: item.repMode,
         targetRepsMin: item.targetRepsMin,
         targetRepsMax: item.targetRepsMax,
@@ -432,6 +435,7 @@ function WorkoutDayEditor({
       Pick<
         DayExerciseRecord,
         | 'targetSets'
+        | 'successesRequired'
         | 'repMode'
         | 'targetRepsMin'
         | 'targetRepsMax'
@@ -530,6 +534,12 @@ function WorkoutDayEditor({
               label="Seeriate arv"
               value={item.targetSets}
               onChange={(value) => void onUpdate(item.id, { targetSets: value })}
+            />
+            <NumberField
+              label="Õnnestumisi enne tõusu"
+              value={item.successesRequired}
+              min={1}
+              onChange={(value) => void onUpdate(item.id, { successesRequired: Math.max(1, value) })}
             />
             <label>
               Sihi tüüp
@@ -642,19 +652,37 @@ function buildModeChange(item: DayExerciseRecord, mode: DayExerciseRecord['repMo
 function NumberField({
   label,
   value,
+  min,
   onChange,
 }: {
   label: string;
   value: number;
+  min?: number;
   onChange: (value: number) => void;
 }) {
+  const [draftValue, setDraftValue] = useState(String(value));
+
+  useEffect(() => {
+    setDraftValue(String(value));
+  }, [value]);
+
   return (
     <label>
       {label}
       <input
         type="number"
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value))}
+        value={draftValue}
+        min={min}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          setDraftValue(nextValue);
+
+          if (nextValue === '') {
+            return;
+          }
+
+          onChange(Number(nextValue));
+        }}
       />
     </label>
   );

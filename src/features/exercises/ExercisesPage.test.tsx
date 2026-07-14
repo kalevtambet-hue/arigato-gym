@@ -51,6 +51,7 @@ describe('ExercisesPage', () => {
       exerciseId,
       sortOrder: 0,
       targetSets: 3,
+      successesRequired: 1,
       repMode: 'range',
       targetRepsMin: 10,
       targetRepsMax: 15,
@@ -123,6 +124,7 @@ describe('ExercisesPage', () => {
       exerciseId,
       sortOrder: 0,
       targetSets: 3,
+      successesRequired: 1,
       repMode: 'fixed',
       targetRepsMin: 12,
       targetRepsMax: 12,
@@ -166,6 +168,51 @@ describe('ExercisesPage', () => {
     expect(screen.queryByLabelText('Raskuse samm (kg)')).not.toBeInTheDocument();
   });
 
+  it('allows editing successes required before progression', async () => {
+    const seed = createInMemorySeed();
+    const timestamp = nowIso();
+    const exerciseId = createId('exercise');
+    const dayExerciseId = createId('day-exercise');
+
+    await db.workoutDays.bulkAdd(seed.workoutDays);
+    await db.exercises.add({
+      id: exerciseId,
+      name: 'Chest Press',
+      machineNumber: '12',
+      notes: '',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await db.dayExercises.add({
+      id: dayExerciseId,
+      workoutDayId: seed.workoutDays[0].id,
+      exerciseId,
+      sortOrder: 0,
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      restSeconds: 90,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    render(<ExercisesPage />);
+    const user = userEvent.setup();
+
+    await user.click((await screen.findAllByRole('button', { name: 'Päev 1' }))[0]);
+    const field = await screen.findByLabelText('Õnnestumisi enne tõusu');
+    await user.clear(field);
+    await user.type(field, '2');
+
+    await waitFor(async () => {
+      expect((await db.dayExercises.get(dayExerciseId))?.successesRequired).toBe(2);
+    });
+  });
+
   it('renames a workout day', async () => {
     const seed = createInMemorySeed();
     await db.workoutDays.bulkAdd(seed.workoutDays);
@@ -203,6 +250,7 @@ describe('ExercisesPage', () => {
       exerciseId,
       sortOrder: 0,
       targetSets: 3,
+      successesRequired: 1,
       repMode: 'range',
       targetRepsMin: 10,
       targetRepsMax: 15,

@@ -15,6 +15,7 @@ export function buildSessionExercises(
       exerciseName: item.exerciseName,
       machineNumber: item.machineNumber,
       targetSets: item.targetSets,
+      successesRequired: item.successesRequired,
       repMode: item.repMode,
       targetRepsMin: item.targetRepsMin,
       targetRepsMax: item.targetRepsMax,

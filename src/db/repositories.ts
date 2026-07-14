@@ -98,9 +98,19 @@ export async function importBackup(payload: BackupPayload) {
 
       await db.exercises.bulkAdd(payload.exercises);
       await db.workoutDays.bulkAdd(payload.workoutDays);
-      await db.dayExercises.bulkAdd(payload.dayExercises);
+      await db.dayExercises.bulkAdd(
+        payload.dayExercises.map((item) => ({
+          ...item,
+          successesRequired: item.successesRequired ?? 1,
+        })),
+      );
       await db.sessions.bulkAdd(payload.sessions);
-      await db.sessionExercises.bulkAdd(payload.sessionExercises);
+      await db.sessionExercises.bulkAdd(
+        payload.sessionExercises.map((item) => ({
+          ...item,
+          successesRequired: item.successesRequired ?? 1,
+        })),
+      );
       await db.setResults.bulkAdd(payload.setResults);
     },
   );

@@ -10,6 +10,7 @@ describe('buildSessionExercises', () => {
         exerciseName: 'Chest Press',
         machineNumber: '12',
         targetSets: 3,
+        successesRequired: 2,
         repMode: 'range',
         targetRepsMin: 10,
         targetRepsMax: 15,
@@ -22,5 +23,6 @@ describe('buildSessionExercises', () => {
     expect(snapshots[0].dayExerciseId).toBe('de1');
     expect(snapshots[0].exerciseName).toBe('Chest Press');
     expect(snapshots[0].workoutSessionId).toBe('session-1');
+    expect(snapshots[0].successesRequired).toBe(2);
   });
 });

@@ -25,6 +25,7 @@ export type DayExerciseRecord = {
   exerciseId: string;
   sortOrder: number;
   targetSets: number;
+  successesRequired: number;
   repMode: RepMode;
   targetRepsMin: number;
   targetRepsMax: number;
@@ -51,6 +52,7 @@ export type WorkoutSessionExerciseRecord = {
   exerciseName: string;
   machineNumber: string;
   targetSets: number;
+  successesRequired: number;
   repMode: RepMode;
   targetRepsMin: number;
   targetRepsMax: number;

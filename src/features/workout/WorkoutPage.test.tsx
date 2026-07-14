@@ -63,6 +63,7 @@ describe('WorkoutPage', () => {
         exerciseName: 'Chest Press',
         machineNumber: '12',
         targetSets: 3,
+        successesRequired: 1,
         repMode: 'range',
         targetRepsMin: 10,
         targetRepsMax: 15,
@@ -77,6 +78,7 @@ describe('WorkoutPage', () => {
         exerciseName: 'Leg Press',
         machineNumber: '17',
         targetSets: 3,
+        successesRequired: 1,
         repMode: 'range',
         targetRepsMin: 10,
         targetRepsMax: 15,
@@ -146,6 +148,7 @@ describe('WorkoutPage', () => {
       exerciseId,
       sortOrder: 0,
       targetSets: 3,
+      successesRequired: 1,
       repMode: 'range',
       targetRepsMin: 10,
       targetRepsMax: 15,
@@ -205,6 +208,7 @@ describe('WorkoutPage', () => {
       exerciseName: 'Ellips',
       machineNumber: '',
       targetSets: 1,
+      successesRequired: 1,
       repMode: 'duration-range',
       targetRepsMin: 10,
       targetRepsMax: 15,
@@ -251,6 +255,7 @@ describe('WorkoutPage', () => {
         exerciseName: 'Chest Press',
         machineNumber: '12',
         targetSets: 3,
+        successesRequired: 1,
         repMode: 'range',
         targetRepsMin: 10,
         targetRepsMax: 15,
@@ -265,6 +270,7 @@ describe('WorkoutPage', () => {
         exerciseName: 'Shoulder Press',
         machineNumber: '14',
         targetSets: 3,
+        successesRequired: 1,
         repMode: 'range',
         targetRepsMin: 10,
         targetRepsMax: 15,
@@ -279,6 +285,7 @@ describe('WorkoutPage', () => {
         exerciseName: 'Leg Press',
         machineNumber: '17',
         targetSets: 3,
+        successesRequired: 1,
         repMode: 'range',
         targetRepsMin: 10,
         targetRepsMax: 15,
@@ -328,6 +335,7 @@ describe('WorkoutPage', () => {
       exerciseId,
       sortOrder: 0,
       targetSets: 3,
+      successesRequired: 1,
       repMode: 'range',
       targetRepsMin: 10,
       targetRepsMax: 15,
@@ -354,6 +362,7 @@ describe('WorkoutPage', () => {
       exerciseName: 'Chest Press',
       machineNumber: '12',
       targetSets: 3,
+      successesRequired: 1,
       repMode: 'range',
       targetRepsMin: 10,
       targetRepsMax: 15,
@@ -372,6 +381,208 @@ describe('WorkoutPage', () => {
       expect(await db.sessions.count()).toBe(0);
       expect(screen.getByText('Valitud päev')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Alusta treeningut' })).toBeInTheDocument();
+    });
+  });
+
+  it('does not raise the target after only one successful workout when successesRequired is 2', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const dayExerciseId = createId('day-exercise');
+    const sessionId = createId('session');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.dayExercises.add({
+      id: dayExerciseId,
+      workoutDayId: dayId,
+      exerciseId: createId('exercise'),
+      sortOrder: 0,
+      targetSets: 3,
+      successesRequired: 2,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      restSeconds: 90,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.add({
+      id: createId('session-exercise'),
+      workoutSessionId: sessionId,
+      dayExerciseId,
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      successesRequired: 2,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: 'Lõpeta treening' }));
+
+    expect(await screen.findByText('Järgmine siht')).toBeInTheDocument();
+    expect(screen.getByText('3 x 10-15 x 60 kg')).toBeInTheDocument();
+
+    await waitFor(async () => {
+      expect((await db.dayExercises.get(dayExerciseId))?.currentWeight).toBe(60);
+    });
+  });
+
+  it('raises the target on the second consecutive successful workout when successesRequired is 2', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const dayExerciseId = createId('day-exercise');
+    const completedSessionId = createId('session');
+    const activeSessionId = createId('session');
+    const completedSessionExerciseId = createId('session-exercise');
+    const activeSessionExerciseId = createId('session-exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.dayExercises.add({
+      id: dayExerciseId,
+      workoutDayId: dayId,
+      exerciseId: createId('exercise'),
+      sortOrder: 0,
+      targetSets: 3,
+      successesRequired: 2,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      restSeconds: 90,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.bulkAdd([
+      {
+        id: completedSessionId,
+        workoutDayId: dayId,
+        performedAt: timestamp,
+        status: 'completed',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+      {
+        id: activeSessionId,
+        workoutDayId: dayId,
+        performedAt: timestamp,
+        status: 'active',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    ]);
+
+    await db.sessionExercises.bulkAdd([
+      {
+        id: completedSessionExerciseId,
+        workoutSessionId: completedSessionId,
+        dayExerciseId,
+        exerciseName: 'Chest Press',
+        machineNumber: '12',
+        targetSets: 3,
+        successesRequired: 2,
+        repMode: 'range',
+        targetRepsMin: 10,
+        targetRepsMax: 15,
+        currentWeight: 60,
+        weightStep: 5,
+        orderIndex: 0,
+      },
+      {
+        id: activeSessionExerciseId,
+        workoutSessionId: activeSessionId,
+        dayExerciseId,
+        exerciseName: 'Chest Press',
+        machineNumber: '12',
+        targetSets: 3,
+        successesRequired: 2,
+        repMode: 'range',
+        targetRepsMin: 10,
+        targetRepsMax: 15,
+        currentWeight: 60,
+        weightStep: 5,
+        orderIndex: 0,
+      },
+    ]);
+
+    await db.setResults.bulkAdd([
+      {
+        id: `${completedSessionExerciseId}-1`,
+        workoutSessionExerciseId: completedSessionExerciseId,
+        setNumber: 1,
+        status: 'success',
+        completedReps: 15,
+      },
+      {
+        id: `${completedSessionExerciseId}-2`,
+        workoutSessionExerciseId: completedSessionExerciseId,
+        setNumber: 2,
+        status: 'success',
+        completedReps: 15,
+      },
+      {
+        id: `${completedSessionExerciseId}-3`,
+        workoutSessionExerciseId: completedSessionExerciseId,
+        setNumber: 3,
+        status: 'success',
+        completedReps: 15,
+      },
+    ]);
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: 'Lõpeta treening' }));
+
+    expect(await screen.findByText('Järgmine siht')).toBeInTheDocument();
+    expect(screen.getByText('3 x 10-15 x 65 kg')).toBeInTheDocument();
+
+    await waitFor(async () => {
+      expect((await db.dayExercises.get(dayExerciseId))?.currentWeight).toBe(65);
     });
   });
 });

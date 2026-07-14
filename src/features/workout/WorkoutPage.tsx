@@ -11,6 +11,7 @@ import type {
   WorkoutDayRecord,
 } from '../../db/types';
 import { computeNextTarget } from '../../domain/progression';
+import { countConsecutiveSuccesses } from '../../domain/consecutiveProgression';
 import { buildSessionExercises } from '../../domain/session';
 import { formatTarget, getSuccessValue, isDurationMode } from '../../domain/targetMode';
 import { createId } from '../../lib/id';
@@ -21,6 +22,82 @@ type DayExerciseView = DayExerciseRecord & {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function isSuccessfulAttempt(
+  item: Pick<
+    WorkoutSessionExerciseRecord,
+    'repMode' | 'targetSets' | 'targetRepsMin' | 'targetRepsMax'
+  >,
+  reps: number[],
+) {
+  const fullCount = reps.length === item.targetSets;
+  if (!fullCount) {
+    return false;
+  }
+
+  if (item.repMode === 'range' || item.repMode === 'duration-range') {
+    return reps.every((value) => value >= item.targetRepsMax);
+  }
+
+  return reps.every((value) => value >= item.targetRepsMin);
+}
+
+function getSortedReps(results: SetResultRecord[]) {
+  return results.sort((left, right) => left.setNumber - right.setNumber).map((entry) => entry.completedReps);
+}
+
+function buildHistoricalAttempts(
+  item: WorkoutSessionExerciseRecord,
+  completedSessions: WorkoutSessionRecord[],
+  historicalSessionExercises: WorkoutSessionExerciseRecord[],
+  historicalResultsByExercise: Map<string, SetResultRecord[]>,
+) {
+  const completedSessionsById = new Map(completedSessions.map((entry) => [entry.id, entry]));
+
+  return historicalSessionExercises
+    .filter(
+      (entry) =>
+        entry.dayExerciseId === item.dayExerciseId && completedSessionsById.has(entry.workoutSessionId),
+    )
+    .sort((left, right) => {
+      const leftSession = completedSessionsById.get(left.workoutSessionId);
+      const rightSession = completedSessionsById.get(right.workoutSessionId);
+      return (leftSession?.performedAt ?? '').localeCompare(rightSession?.performedAt ?? '');
+    })
+    .map((entry) => ({
+      matchedTarget:
+        entry.repMode === item.repMode &&
+        entry.targetRepsMin === item.targetRepsMin &&
+        entry.targetRepsMax === item.targetRepsMax &&
+        entry.currentWeight === item.currentWeight,
+      success: isSuccessfulAttempt(entry, getSortedReps(historicalResultsByExercise.get(entry.id) ?? [])),
+    }));
+}
+
+function shouldAdvanceTarget(
+  item: WorkoutSessionExerciseRecord,
+  reps: number[],
+  completedSessions: WorkoutSessionRecord[],
+  historicalSessionExercises: WorkoutSessionExerciseRecord[],
+  historicalResultsByExercise: Map<string, SetResultRecord[]>,
+) {
+  const currentSuccess = isSuccessfulAttempt(item, reps);
+  if (!currentSuccess) {
+    return false;
+  }
+
+  const historicalAttempts = buildHistoricalAttempts(
+    item,
+    completedSessions,
+    historicalSessionExercises,
+    historicalResultsByExercise,
+  );
+
+  return (
+    countConsecutiveSuccesses([...historicalAttempts, { matchedTarget: true, success: currentSuccess }]) >=
+    item.successesRequired
+  );
 }
 
 async function startWorkout(workoutDayId: string) {
@@ -35,6 +112,7 @@ async function startWorkout(workoutDayId: string) {
     exerciseName: exercises[index]?.name ?? 'Harjutus',
     machineNumber: exercises[index]?.machineNumber ?? '',
     targetSets: item.targetSets,
+    successesRequired: item.successesRequired,
     repMode: item.repMode,
     targetRepsMin: item.targetRepsMin,
     targetRepsMax: item.targetRepsMax,
@@ -83,22 +161,39 @@ async function completeWorkout(
     resultsByExercise.set(result.workoutSessionExerciseId, list);
   }
 
-  await db.transaction('rw', db.dayExercises, db.sessions, async () => {
+  await db.transaction('rw', db.dayExercises, db.sessions, db.sessionExercises, db.setResults, async () => {
+    const completedSessions = await db.sessions.where('status').equals('completed').toArray();
+    const historicalSessionExercises = await db.sessionExercises.toArray();
+    const historicalSetResults = await db.setResults.toArray();
+    const historicalResultsByExercise = new Map<string, SetResultRecord[]>();
+
+    for (const result of historicalSetResults) {
+      const list = historicalResultsByExercise.get(result.workoutSessionExerciseId) ?? [];
+      list.push(result);
+      historicalResultsByExercise.set(result.workoutSessionExerciseId, list);
+    }
+
     for (const item of sessionExercises) {
-      const reps = (resultsByExercise.get(item.id) ?? [])
-        .sort((left, right) => left.setNumber - right.setNumber)
-        .map((entry) => entry.completedReps);
+      const reps = getSortedReps(resultsByExercise.get(item.id) ?? []);
+      const shouldAdvance = shouldAdvanceTarget(
+        item,
+        reps,
+        completedSessions,
+        historicalSessionExercises,
+        historicalResultsByExercise,
+      );
 
       const nextTarget = computeNextTarget(
         {
           repMode: item.repMode,
           targetSets: item.targetSets,
+          successesRequired: item.successesRequired,
           targetRepsMin: item.targetRepsMin,
           targetRepsMax: item.targetRepsMax,
           currentWeight: item.currentWeight,
           weightStep: item.weightStep,
         },
-        reps,
+        shouldAdvance ? reps : [],
       );
 
       await db.dayExercises.update(item.dayExerciseId, {
@@ -296,34 +391,6 @@ export function WorkoutPage() {
     };
   }, [sessionExercises, setResults]);
 
-  const summary = useMemo(
-    () =>
-      (sessionExercises ?? []).map((item) => {
-        const reps = (setResults ?? [])
-          .filter((result) => result.workoutSessionExerciseId === item.id)
-          .sort((left, right) => left.setNumber - right.setNumber)
-          .map((result) => result.completedReps);
-
-        const nextTarget = computeNextTarget(
-          {
-            repMode: item.repMode,
-            targetSets: item.targetSets,
-            targetRepsMin: item.targetRepsMin,
-            targetRepsMax: item.targetRepsMax,
-            currentWeight: item.currentWeight,
-            weightStep: item.weightStep,
-          },
-          reps,
-        );
-
-        return {
-          id: item.id,
-          name: item.exerciseName,
-          nextTarget,
-        };
-      }),
-    [sessionExercises, setResults],
-  );
   const failureExercise = useMemo(
     () => (sessionExercises ?? []).find((item) => item.id === failureTarget?.sessionExerciseId) ?? null,
     [failureTarget?.sessionExerciseId, sessionExercises],
@@ -501,7 +568,53 @@ export function WorkoutPage() {
             type="button"
             className="primary-button"
             onClick={async () => {
-              setCompletedSummary(summary);
+              const completedSessions = await db.sessions.where('status').equals('completed').toArray();
+              const historicalSessionExercises = await db.sessionExercises.toArray();
+              const historicalSetResults = await db.setResults.toArray();
+              const currentResultsByExercise = new Map<string, SetResultRecord[]>();
+              const historicalResultsByExercise = new Map<string, SetResultRecord[]>();
+
+              for (const result of setResults ?? []) {
+                const list = currentResultsByExercise.get(result.workoutSessionExerciseId) ?? [];
+                list.push(result);
+                currentResultsByExercise.set(result.workoutSessionExerciseId, list);
+              }
+
+              for (const result of historicalSetResults) {
+                const list = historicalResultsByExercise.get(result.workoutSessionExerciseId) ?? [];
+                list.push(result);
+                historicalResultsByExercise.set(result.workoutSessionExerciseId, list);
+              }
+
+              const nextSummary = (sessionExercises ?? []).map((item) => {
+                const reps = getSortedReps(currentResultsByExercise.get(item.id) ?? []);
+                const shouldAdvance = shouldAdvanceTarget(
+                  item,
+                  reps,
+                  completedSessions,
+                  historicalSessionExercises,
+                  historicalResultsByExercise,
+                );
+
+                return {
+                  id: item.id,
+                  name: item.exerciseName,
+                  nextTarget: computeNextTarget(
+                    {
+                      repMode: item.repMode,
+                      targetSets: item.targetSets,
+                      successesRequired: item.successesRequired,
+                      targetRepsMin: item.targetRepsMin,
+                      targetRepsMax: item.targetRepsMax,
+                      currentWeight: item.currentWeight,
+                      weightStep: item.weightStep,
+                    },
+                    shouldAdvance ? reps : [],
+                  ),
+                };
+              });
+
+              setCompletedSummary(nextSummary);
               await completeWorkout(activeSession, sessionExercises ?? [], setResults ?? []);
             }}
           >
