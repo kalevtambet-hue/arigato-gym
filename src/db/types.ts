@@ -67,6 +67,7 @@ export type SetResultRecord = {
   setNumber: number;
   status: 'success' | 'failed';
   completedReps: number;
+  usedWeight: number | null;
 };
 
 export type BackupPayload = {

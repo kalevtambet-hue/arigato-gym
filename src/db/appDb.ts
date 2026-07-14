@@ -66,6 +66,23 @@ export class AppDb extends Dexie {
             row.successesRequired ??= 1;
           });
       });
+    this.version(4)
+      .stores({
+        exercises: 'id, name, machineNumber, updatedAt',
+        workoutDays: 'id, sortOrder, isArchived, updatedAt',
+        dayExercises: 'id, workoutDayId, exerciseId, sortOrder, updatedAt',
+        sessions: 'id, workoutDayId, status, performedAt',
+        sessionExercises: 'id, workoutSessionId, dayExerciseId, orderIndex',
+        setResults: 'id, workoutSessionExerciseId, setNumber',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('setResults')
+          .toCollection()
+          .modify((row) => {
+            row.usedWeight ??= null;
+          });
+      });
   }
 }
 
