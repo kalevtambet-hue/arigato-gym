@@ -201,6 +201,44 @@ describe('ExercisesPage', () => {
     expect(await db.dayExercises.where('workoutDayId').equals(copiedDay!.id).count()).toBe(1);
   });
 
+  it('allows adding the same base exercise to a workout day twice', async () => {
+    const seed = createInMemorySeed();
+    const timestamp = nowIso();
+    const exerciseId = createId('exercise');
+
+    await db.workoutDays.bulkAdd(seed.workoutDays);
+    await db.exercises.add({
+      id: exerciseId,
+      name: 'Ellips',
+      machineNumber: '',
+      notes: '',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    render(<ExercisesPage />);
+    const user = userEvent.setup();
+
+    await user.click((await screen.findAllByRole('button', { name: 'Päev 1' }))[0]);
+
+    const selector = await screen.findByRole('combobox');
+    await user.selectOptions(selector, exerciseId);
+    await user.click(screen.getByRole('button', { name: 'Lisa päeva' }));
+
+    await waitFor(async () => {
+      expect(await db.dayExercises.where('workoutDayId').equals(seed.workoutDays[0].id).count()).toBe(1);
+    });
+
+    await user.selectOptions(selector, exerciseId);
+    await user.click(screen.getByRole('button', { name: 'Lisa päeva' }));
+
+    await waitFor(async () => {
+      expect(await db.dayExercises.where('workoutDayId').equals(seed.workoutDays[0].id).count()).toBe(2);
+    });
+
+    expect((await db.dayExercises.where('exerciseId').equals(exerciseId).toArray())).toHaveLength(2);
+  });
+
   it('deletes a workout day after confirmation', async () => {
     const seed = createInMemorySeed();
     await db.workoutDays.bulkAdd(seed.workoutDays);
