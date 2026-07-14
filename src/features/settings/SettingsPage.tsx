@@ -24,6 +24,8 @@ function downloadText(filename: string, content: string, type: string) {
 }
 
 export function SettingsPage() {
+  const versionLabel = `Versioon ${__APP_VERSION__} (${__APP_BUILD__})`;
+
   const importCsvFiles = async (files: FileList | null) => {
     if (!files?.length) {
       return;
@@ -192,6 +194,7 @@ export function SettingsPage() {
           <p className="muted">
             Rakendus on installitav brauseri menust. Pärast esmast avamist töötab see ka ilma internetita.
           </p>
+          <p className="muted">{versionLabel}</p>
         </article>
       </div>
     </section>
