@@ -164,6 +164,29 @@ export function WorkoutPage() {
     return (setResults ?? []).filter((item) => item.workoutSessionExerciseId === nextExercise.id).length + 1;
   }, [nextExercise, setResults]);
 
+  const progress = useMemo(() => {
+    const totalExercises = (sessionExercises ?? []).length;
+    const resultsCount = new Map<string, number>();
+
+    for (const item of setResults ?? []) {
+      resultsCount.set(item.workoutSessionExerciseId, (resultsCount.get(item.workoutSessionExerciseId) ?? 0) + 1);
+    }
+
+    const completedExercises = (sessionExercises ?? []).filter(
+      (item) => (resultsCount.get(item.id) ?? 0) >= item.targetSets,
+    ).length;
+
+    const remainingExercises = Math.max(totalExercises - completedExercises, 0);
+    const progressPercent = totalExercises > 0 ? (completedExercises / totalExercises) * 100 : 0;
+
+    return {
+      totalExercises,
+      completedExercises,
+      remainingExercises,
+      progressPercent,
+    };
+  }, [sessionExercises, setResults]);
+
   const summary = useMemo(
     () =>
       (sessionExercises ?? []).map((item) => {
@@ -201,6 +224,18 @@ export function WorkoutPage() {
           <h2>Tänane treening</h2>
         </div>
       </div>
+
+      {activeSession && progress.totalExercises > 0 ? (
+        <div className="panel progress-panel">
+          <div className="config-head">
+            <strong>{`Tehtud ${progress.completedExercises} / ${progress.totalExercises}`}</strong>
+            <span>{`Jäänud ${progress.remainingExercises}`}</span>
+          </div>
+          <div className="progress-track" aria-hidden="true">
+            <div className="progress-fill" style={{ width: `${progress.progressPercent}%` }} />
+          </div>
+        </div>
+      ) : null}
 
       {!activeSession ? (
         <div className="grid single">
