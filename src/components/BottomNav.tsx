@@ -1,8 +1,8 @@
 import { NavLink } from 'react-router-dom';
 
 const items = [
-  { to: '/harjutused', label: 'Harjutused' },
-  { to: '/treening', label: 'Tänane treening' },
+  { to: '/treening', label: 'Treening' },
+  { to: '/kavad', label: 'Kavad' },
   { to: '/ajalugu', label: 'Ajalugu' },
   { to: '/seaded', label: 'Seaded' },
 ];

@@ -237,6 +237,14 @@ select {
   color: #94a3b8;
 }
 
+.note-copy {
+  margin-top: 0.75rem;
+}
+
+.preview-list {
+  margin-bottom: 0.85rem;
+}
+
 .progress-panel {
   gap: 0.7rem;
 }

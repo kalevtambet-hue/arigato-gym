@@ -65,6 +65,7 @@ describe('ExercisesPage', () => {
     const user = userEvent.setup();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 
+    expect(await screen.findByRole('heading', { name: 'Kavad' })).toBeInTheDocument();
     expect(await screen.findByText('Leg Press')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Kustuta Leg Press' }));
 
@@ -156,7 +157,7 @@ describe('ExercisesPage', () => {
 
     await user.selectOptions(await screen.findByRole('combobox'), 'Ellips');
     await user.click(screen.getByRole('button', { name: 'Lisa päeva' }));
-    await user.selectOptions(screen.getAllByRole('combobox')[1], 'duration-range');
+    await user.selectOptions(await screen.findByLabelText('Sihi tüüp'), 'duration-range');
 
     expect(await screen.findByLabelText('Min kestus (min)')).toBeInTheDocument();
     expect(screen.getByLabelText('Max kestus (min)')).toBeInTheDocument();

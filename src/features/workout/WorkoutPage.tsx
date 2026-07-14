@@ -1,16 +1,23 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { db } from '../../db/appDb';
 import { ensureSeedData } from '../../db/repositories';
 import type {
+  DayExerciseRecord,
+  ExerciseRecord,
   SetResultRecord,
   WorkoutSessionExerciseRecord,
   WorkoutSessionRecord,
+  WorkoutDayRecord,
 } from '../../db/types';
 import { computeNextTarget } from '../../domain/progression';
 import { buildSessionExercises } from '../../domain/session';
 import { formatTarget, getSuccessValue, isDurationMode } from '../../domain/targetMode';
 import { createId } from '../../lib/id';
+
+type DayExerciseView = DayExerciseRecord & {
+  exercise?: ExerciseRecord;
+};
 
 function nowIso() {
   return new Date().toISOString();
@@ -117,6 +124,8 @@ export function WorkoutPage() {
     () => db.workoutDays.orderBy('sortOrder').filter((item) => !item.isArchived).toArray(),
     [],
   );
+  const dayExercises = useLiveQuery(() => db.dayExercises.toArray(), []);
+  const exercises = useLiveQuery(() => db.exercises.toArray(), []);
   const activeSession = useLiveQuery(() => db.sessions.where('status').equals('active').first(), []);
   const sessionExercises = useLiveQuery<WorkoutSessionExerciseRecord[]>(
     () =>
@@ -141,6 +150,7 @@ export function WorkoutPage() {
     setNumber: number;
     reps: string;
   } | null>(null);
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [completedSummary, setCompletedSummary] = useState<
     Array<{
       id: string;
@@ -148,6 +158,46 @@ export function WorkoutPage() {
       nextTarget: ReturnType<typeof computeNextTarget>;
     }>
   >([]);
+
+  useEffect(() => {
+    if (!workoutDays?.length) {
+      if (selectedDayId !== null) {
+        setSelectedDayId(null);
+      }
+      return;
+    }
+
+    if (!selectedDayId || !(workoutDays ?? []).some((day) => day.id === selectedDayId)) {
+      setSelectedDayId(workoutDays[0].id);
+    }
+  }, [selectedDayId, workoutDays]);
+
+  const dayExerciseGroups = useMemo(() => {
+    const exerciseMap = new Map((exercises ?? []).map((item) => [item.id, item]));
+    const groups = new Map<string, DayExerciseView[]>();
+
+    for (const item of dayExercises ?? []) {
+      const list = groups.get(item.workoutDayId) ?? [];
+      list.push({ ...item, exercise: exerciseMap.get(item.exerciseId) });
+      groups.set(item.workoutDayId, list);
+    }
+
+    for (const value of groups.values()) {
+      value.sort((left, right) => left.sortOrder - right.sortOrder);
+    }
+
+    return groups;
+  }, [dayExercises, exercises]);
+
+  const selectedDay = useMemo<WorkoutDayRecord | null>(
+    () => (workoutDays ?? []).find((day) => day.id === selectedDayId) ?? null,
+    [selectedDayId, workoutDays],
+  );
+
+  const selectedDayExercises = useMemo(
+    () => (selectedDay ? dayExerciseGroups.get(selectedDay.id) ?? [] : []),
+    [dayExerciseGroups, selectedDay],
+  );
 
   const nextExercise = useMemo(() => {
     const resultsCount = new Map<string, number>();
@@ -246,19 +296,61 @@ export function WorkoutPage() {
       ) : null}
 
       {!activeSession ? (
-        <div className="grid single">
-          {(workoutDays ?? []).map((day) => (
-            <button
-              key={day.id}
-              type="button"
-              className="hero-button"
-              onClick={() => void startWorkout(day.id)}
-            >
-              Alusta {day.name}
-            </button>
-          ))}
-          {workoutDays?.length === 0 ? <p className="empty-card">Loo enne treeningpäev.</p> : null}
-        </div>
+        <>
+          {workoutDays?.length === 0 ? (
+            <p className="empty-card">Lisa esmalt treeningpäevad ja harjutused Kavad lehel.</p>
+          ) : (
+            <>
+              <div className="panel">
+                <p className="eyebrow">Valitud päev</p>
+                <div className="day-tabs">
+                  {(workoutDays ?? []).map((day) => (
+                    <button
+                      key={day.id}
+                      type="button"
+                      className={selectedDayId === day.id ? 'tab-chip active' : 'tab-chip'}
+                      onClick={() => setSelectedDayId(day.id)}
+                    >
+                      {day.name}
+                    </button>
+                  ))}
+                </div>
+                {selectedDay?.notes ? <p className="muted note-copy">{selectedDay.notes}</p> : null}
+              </div>
+
+              <div className="panel">
+                <p className="eyebrow">Päeva harjutused</p>
+                <ul className="stack-list preview-list">
+                  {selectedDayExercises.map((item) => (
+                    <li key={item.id} className="list-card">
+                      <strong>{item.exercise?.name ?? 'Harjutus'}</strong>
+                      <span>Masin #{item.exercise?.machineNumber || '-'}</span>
+                      <span>
+                        {item.targetSets} x{' '}
+                        {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {selectedDayExercises.length === 0 ? (
+                  <p className="empty-card">Sellel päeval pole veel harjutusi.</p>
+                ) : (
+                  <button
+                    type="button"
+                    className="hero-button"
+                    onClick={() => {
+                      if (selectedDay) {
+                        void startWorkout(selectedDay.id);
+                      }
+                    }}
+                  >
+                    Alusta treeningut
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </>
       ) : null}
 
       {activeSession && nextExercise ? (

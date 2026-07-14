@@ -115,6 +115,63 @@ describe('WorkoutPage', () => {
     expect(screen.getByText('Jäänud 1')).toBeInTheDocument();
   });
 
+  it('shows the selected day note and exercise preview before starting a workout', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const exerciseId = createId('exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: 'Õlale rahulik tempo',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.exercises.add({
+      id: exerciseId,
+      name: 'Chest Press',
+      machineNumber: '12',
+      notes: '',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.dayExercises.add({
+      id: createId('day-exercise'),
+      workoutDayId: dayId,
+      exerciseId,
+      sortOrder: 0,
+      targetSets: 3,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      restSeconds: 90,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    render(<WorkoutPage />);
+
+    expect(await screen.findByText('Valitud päev')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Päev 1' })).toBeInTheDocument();
+    expect(screen.getByText('Õlale rahulik tempo')).toBeInTheDocument();
+    expect(screen.getByText('Päeva harjutused')).toBeInTheDocument();
+    expect(screen.getByText('Chest Press')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Alusta treeningut' })).toBeInTheDocument();
+  });
+
+  it('shows a setup empty state when no workout days exist', async () => {
+    render(<WorkoutPage />);
+
+    expect(await screen.findByText('Lisa esmalt treeningpäevad ja harjutused Kavad lehel.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Alusta treeningut' })).not.toBeInTheDocument();
+  });
+
   it('renders duration targets without reps or weight', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');

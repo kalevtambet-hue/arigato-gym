@@ -200,7 +200,7 @@ export function ExercisesPage() {
       <div className="section-header">
         <div>
           <p className="eyebrow">Register ja mallid</p>
-          <h2>Harjutused</h2>
+          <h2>Kavad</h2>
         </div>
         <div className="button-row">
           <button type="button" className="primary-button" onClick={() => setExerciseFormOpen(true)}>
