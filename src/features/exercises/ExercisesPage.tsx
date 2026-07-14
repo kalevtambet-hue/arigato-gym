@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { db } from '../../db/appDb';
 import { ensureSeedData } from '../../db/repositories';
 import type { DayExerciseRecord, ExerciseRecord, WorkoutDayRecord } from '../../db/types';
+import { formatTarget, isDurationMode, isFixedMode } from '../../domain/targetMode';
 import { createId } from '../../lib/id';
 
 type DayExerciseView = DayExerciseRecord & {
@@ -91,7 +92,10 @@ async function updateDayExercise(
   >,
 ) {
   const nextChanges = { ...changes };
-  if (changes.repMode === 'fixed') {
+  if (changes.repMode && isDurationMode(changes.repMode)) {
+    nextChanges.currentWeight = 0;
+  }
+  if (changes.repMode && isFixedMode(changes.repMode)) {
     const fixedReps = changes.targetRepsMin ?? changes.targetRepsMax;
     if (fixedReps !== undefined) {
       nextChanges.targetRepsMin = fixedReps;
@@ -507,6 +511,7 @@ function WorkoutDayEditor({
             <div>
               <strong>{item.exercise?.name ?? 'Harjutus'}</strong>
               <p>Masin #{item.exercise?.machineNumber || '-'}</p>
+              <p>{item.targetSets} x {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}</p>
             </div>
             <button
               type="button"
@@ -527,22 +532,28 @@ function WorkoutDayEditor({
               onChange={(value) => void onUpdate(item.id, { targetSets: value })}
             />
             <label>
-              Korduste mood
+              Sihi tüüp
               <select
                 value={item.repMode}
                 onChange={(event) =>
-                  void onUpdate(item.id, {
-                    repMode: event.target.value as DayExerciseRecord['repMode'],
-                    targetRepsMax:
-                      event.target.value === 'fixed' ? item.targetRepsMin : item.targetRepsMax,
-                  })
+                  void onUpdate(item.id, buildModeChange(item, event.target.value as DayExerciseRecord['repMode']))
                 }
               >
-                <option value="range">Vahemik</option>
-                <option value="fixed">Fikseeritud</option>
+                <option value="range">Kordused vahemik</option>
+                <option value="fixed">Kordused fikseeritud</option>
+                <option value="duration-range">Kestus vahemik</option>
+                <option value="duration-fixed">Kestus fikseeritud</option>
               </select>
             </label>
-            {item.repMode === 'fixed' ? (
+            {item.repMode === 'duration-fixed' ? (
+              <NumberField
+                label="Kestus (min)"
+                value={item.targetRepsMin}
+                onChange={(value) =>
+                  void onUpdate(item.id, { targetRepsMin: value, targetRepsMax: value })
+                }
+              />
+            ) : item.repMode === 'fixed' ? (
               <NumberField
                 label="Kordused"
                 value={item.targetRepsMin}
@@ -550,6 +561,19 @@ function WorkoutDayEditor({
                   void onUpdate(item.id, { targetRepsMin: value, targetRepsMax: value })
                 }
               />
+            ) : item.repMode === 'duration-range' ? (
+              <>
+                <NumberField
+                  label="Min kestus (min)"
+                  value={item.targetRepsMin}
+                  onChange={(value) => void onUpdate(item.id, { targetRepsMin: value })}
+                />
+                <NumberField
+                  label="Max kestus (min)"
+                  value={item.targetRepsMax}
+                  onChange={(value) => void onUpdate(item.id, { targetRepsMax: value })}
+                />
+              </>
             ) : (
               <>
                 <NumberField
@@ -564,21 +588,55 @@ function WorkoutDayEditor({
                 />
               </>
             )}
-            <NumberField
-              label="Raskus (kg)"
-              value={item.currentWeight}
-              onChange={(value) => void onUpdate(item.id, { currentWeight: value })}
-            />
-            <NumberField
-              label="Raskuse samm (kg)"
-              value={item.weightStep}
-              onChange={(value) => void onUpdate(item.id, { weightStep: value })}
-            />
+            {isDurationMode(item.repMode) ? (
+              <NumberField
+                label="Kestuse samm (min)"
+                value={item.weightStep}
+                onChange={(value) => void onUpdate(item.id, { weightStep: value })}
+              />
+            ) : (
+              <>
+                <NumberField
+                  label="Raskus (kg)"
+                  value={item.currentWeight}
+                  onChange={(value) => void onUpdate(item.id, { currentWeight: value })}
+                />
+                <NumberField
+                  label="Raskuse samm (kg)"
+                  value={item.weightStep}
+                  onChange={(value) => void onUpdate(item.id, { weightStep: value })}
+                />
+              </>
+            )}
           </div>
         </div>
       ))}
     </div>
   );
+}
+
+function buildModeChange(item: DayExerciseRecord, mode: DayExerciseRecord['repMode']) {
+  const changes: Partial<DayExerciseRecord> = { repMode: mode };
+
+  if (mode === 'fixed' || mode === 'duration-fixed') {
+    changes.targetRepsMax = item.targetRepsMin;
+  }
+
+  if (mode === 'duration-range') {
+    changes.currentWeight = 0;
+    changes.weightStep = item.weightStep > 0 ? item.weightStep : 1;
+    changes.targetRepsMin = item.targetRepsMin > 0 ? item.targetRepsMin : 10;
+    changes.targetRepsMax = item.targetRepsMax >= changes.targetRepsMin ? item.targetRepsMax : 15;
+  }
+
+  if (mode === 'duration-fixed') {
+    changes.currentWeight = 0;
+    changes.weightStep = item.weightStep > 0 ? item.weightStep : 1;
+    changes.targetRepsMin = item.targetRepsMin > 0 ? item.targetRepsMin : 10;
+    changes.targetRepsMax = changes.targetRepsMin;
+  }
+
+  return changes;
 }
 
 function NumberField({

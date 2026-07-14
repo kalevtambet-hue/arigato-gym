@@ -9,6 +9,7 @@ import type {
 } from '../../db/types';
 import { computeNextTarget } from '../../domain/progression';
 import { buildSessionExercises } from '../../domain/session';
+import { formatTarget, getSuccessValue, isDurationMode } from '../../domain/targetMode';
 import { createId } from '../../lib/id';
 
 function nowIso() {
@@ -94,7 +95,10 @@ async function completeWorkout(
       );
 
       await db.dayExercises.update(item.dayExerciseId, {
+        targetRepsMin: nextTarget.targetRepsMin,
+        targetRepsMax: nextTarget.targetRepsMax,
         currentWeight: nextTarget.currentWeight,
+        weightStep: nextTarget.weightStep,
         updatedAt: nowIso(),
       });
     }
@@ -215,6 +219,10 @@ export function WorkoutPage() {
       }),
     [sessionExercises, setResults],
   );
+  const failureExercise = useMemo(
+    () => (sessionExercises ?? []).find((item) => item.id === failureTarget?.sessionExerciseId) ?? null,
+    [failureTarget?.sessionExerciseId, sessionExercises],
+  );
 
   return (
     <section className="page">
@@ -259,10 +267,12 @@ export function WorkoutPage() {
           <h3>{nextExercise.exerciseName}</h3>
           <p className="muted">
             Masin #{nextExercise.machineNumber || '-'} · {nextExercise.targetSets} x{' '}
-            {nextExercise.repMode === 'range'
-              ? `${nextExercise.targetRepsMin}-${nextExercise.targetRepsMax}`
-              : nextExercise.targetRepsMin}{' '}
-            x {nextExercise.currentWeight} kg
+            {formatTarget(
+              nextExercise.repMode,
+              nextExercise.targetRepsMin,
+              nextExercise.targetRepsMax,
+              nextExercise.currentWeight,
+            )}
           </p>
           <p className="set-badge">Seeria {nextSetNumber}</p>
           <div className="button-stack">
@@ -274,7 +284,11 @@ export function WorkoutPage() {
                   nextExercise,
                   nextSetNumber,
                   'success',
-                  nextExercise.repMode === 'range' ? nextExercise.targetRepsMax : nextExercise.targetRepsMin,
+                  getSuccessValue(
+                    nextExercise.repMode,
+                    nextExercise.targetRepsMin,
+                    nextExercise.targetRepsMax,
+                  ),
                 )
               }
             >
@@ -317,10 +331,12 @@ export function WorkoutPage() {
                 <strong>{item.name}</strong>
                 <span>
                   {item.nextTarget.targetSets} x{' '}
-                  {item.nextTarget.repMode === 'range'
-                    ? `${item.nextTarget.targetRepsMin}-${item.nextTarget.targetRepsMax}`
-                    : item.nextTarget.targetRepsMin}{' '}
-                  x {item.nextTarget.currentWeight} kg
+                  {formatTarget(
+                    item.nextTarget.repMode,
+                    item.nextTarget.targetRepsMin,
+                    item.nextTarget.targetRepsMax,
+                    item.nextTarget.currentWeight,
+                  )}
                 </span>
               </li>
             ))}
@@ -332,7 +348,9 @@ export function WorkoutPage() {
         <div className="modal-card">
           <h3>Ebaõnnestunud seeria</h3>
           <label htmlFor="completedReps">
-            Tegelikud kordused
+            {failureExercise && isDurationMode(failureExercise.repMode)
+              ? 'Tegelik kestus (min)'
+              : 'Tegelikud kordused'}
             <input
               id="completedReps"
               type="number"

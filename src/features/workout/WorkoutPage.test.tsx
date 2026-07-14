@@ -114,4 +114,50 @@ describe('WorkoutPage', () => {
     expect(await screen.findByText('Tehtud 1 / 2')).toBeInTheDocument();
     expect(screen.getByText('Jäänud 1')).toBeInTheDocument();
   });
+
+  it('renders duration targets without reps or weight', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.add({
+      id: sessionExerciseId,
+      workoutSessionId: sessionId,
+      dayExerciseId: createId('day-exercise'),
+      exerciseName: 'Ellips',
+      machineNumber: '',
+      targetSets: 1,
+      repMode: 'duration-range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 0,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+
+    render(<WorkoutPage />);
+
+    expect(await screen.findByText((content) => content.includes('1') && content.includes('10-15 min'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tehtud' })).toBeInTheDocument();
+  });
 });

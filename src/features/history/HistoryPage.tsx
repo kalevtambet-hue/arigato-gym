@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { db } from '../../db/appDb';
+import { formatResultValue, formatTarget } from '../../domain/targetMode';
 
 export function HistoryPage() {
   const sessions = useLiveQuery(() => db.sessions.orderBy('performedAt').reverse().toArray(), []);
@@ -27,7 +28,9 @@ export function HistoryPage() {
         )
         .map((item) => ({
           ...item,
-          reps: (resultsByExercise.get(item.id) ?? []).join(' / '),
+          reps: (resultsByExercise.get(item.id) ?? [])
+            .map((value) => formatResultValue(item.repMode, value))
+            .join(' / '),
         })),
     }));
   }, [sessions, sessionExercises, setResults, exerciseFilter]);
@@ -56,8 +59,7 @@ export function HistoryPage() {
                   <strong>{item.exerciseName}</strong>
                   <span>
                     {item.targetSets} x{' '}
-                    {item.repMode === 'range' ? `${item.targetRepsMin}-${item.targetRepsMax}` : item.targetRepsMin} x{' '}
-                    {item.currentWeight} kg
+                    {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}
                   </span>
                   <span>{item.reps || 'Seeriad puuduvad'}</span>
                 </li>

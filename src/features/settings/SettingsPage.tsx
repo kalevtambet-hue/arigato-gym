@@ -2,6 +2,17 @@ import type { BackupPayload } from '../../db/types';
 import { exportBackup, importBackup } from '../../db/repositories';
 import { parseCsv, toCsv } from './exportCsv';
 
+function parseRepMode(value: unknown) {
+  switch (value) {
+    case 'fixed':
+    case 'duration-fixed':
+    case 'duration-range':
+      return value;
+    default:
+      return 'range';
+  }
+}
+
 function downloadText(filename: string, content: string, type: string) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -52,7 +63,7 @@ export function SettingsPage() {
             exerciseId: String(row.exerciseId ?? ''),
             sortOrder: Number(row.sortOrder ?? 0),
             targetSets: Number(row.targetSets ?? 0),
-            repMode: row.repMode === 'fixed' ? 'fixed' : 'range',
+            repMode: parseRepMode(row.repMode),
             targetRepsMin: Number(row.targetRepsMin ?? 0),
             targetRepsMax: Number(row.targetRepsMax ?? 0),
             currentWeight: Number(row.currentWeight ?? 0),
@@ -80,7 +91,7 @@ export function SettingsPage() {
             exerciseName: String(row.exerciseName ?? ''),
             machineNumber: String(row.machineNumber ?? ''),
             targetSets: Number(row.targetSets ?? 0),
-            repMode: row.repMode === 'fixed' ? 'fixed' : 'range',
+            repMode: parseRepMode(row.repMode),
             targetRepsMin: Number(row.targetRepsMin ?? 0),
             targetRepsMax: Number(row.targetRepsMax ?? 0),
             currentWeight: Number(row.currentWeight ?? 0),

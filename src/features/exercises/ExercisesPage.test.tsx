@@ -142,6 +142,29 @@ describe('ExercisesPage', () => {
     expect(screen.queryByLabelText('Max kordused')).not.toBeInTheDocument();
   });
 
+  it('shows duration fields and hides weight fields for duration mode', async () => {
+    const seed = createInMemorySeed();
+    await db.workoutDays.bulkAdd(seed.workoutDays);
+
+    render(<ExercisesPage />);
+    const user = userEvent.setup();
+
+    await user.click((await screen.findAllByRole('button', { name: 'Päev 1' }))[0]);
+    await user.click(screen.getByRole('button', { name: 'Lisa harjutus' }));
+    await user.type(screen.getByLabelText('Harjutuse nimi'), 'Ellips');
+    await user.click(screen.getByRole('button', { name: 'Salvesta harjutus' }));
+
+    await user.selectOptions(await screen.findByRole('combobox'), 'Ellips');
+    await user.click(screen.getByRole('button', { name: 'Lisa päeva' }));
+    await user.selectOptions(screen.getAllByRole('combobox')[1], 'duration-range');
+
+    expect(await screen.findByLabelText('Min kestus (min)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Max kestus (min)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Kestuse samm (min)')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Raskus (kg)')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Raskuse samm (kg)')).not.toBeInTheDocument();
+  });
+
   it('renames a workout day', async () => {
     const seed = createInMemorySeed();
     await db.workoutDays.bulkAdd(seed.workoutDays);

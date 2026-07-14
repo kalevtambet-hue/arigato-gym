@@ -1,4 +1,4 @@
-export type RepMode = 'fixed' | 'range';
+export type RepMode = 'fixed' | 'range' | 'duration-fixed' | 'duration-range';
 
 export type ExerciseRecord = {
   id: string;

@@ -33,4 +33,40 @@ describe('computeNextTarget', () => {
 
     expect(result.currentWeight).toBe(50);
   });
+
+  it('raises duration range target when every set reaches the max minutes', () => {
+    const result = computeNextTarget(
+      {
+        repMode: 'duration-range',
+        targetSets: 2,
+        targetRepsMin: 10,
+        targetRepsMax: 15,
+        currentWeight: 0,
+        weightStep: 5,
+      },
+      [15, 15],
+    );
+
+    expect(result.targetRepsMin).toBe(15);
+    expect(result.targetRepsMax).toBe(20);
+    expect(result.currentWeight).toBe(0);
+  });
+
+  it('keeps the same duration target when one set misses the target minutes', () => {
+    const result = computeNextTarget(
+      {
+        repMode: 'duration-fixed',
+        targetSets: 2,
+        targetRepsMin: 10,
+        targetRepsMax: 10,
+        currentWeight: 0,
+        weightStep: 2,
+      },
+      [10, 8],
+    );
+
+    expect(result.targetRepsMin).toBe(10);
+    expect(result.targetRepsMax).toBe(10);
+    expect(result.currentWeight).toBe(0);
+  });
 });
