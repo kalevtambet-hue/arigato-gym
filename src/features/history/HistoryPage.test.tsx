@@ -31,6 +31,7 @@ describe('HistoryPage', () => {
   it('shows history sessions as collapsed date groups', async () => {
     const timestamp = nowIso();
     const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
 
     await db.sessions.add({
       id: sessionId,
@@ -41,10 +42,54 @@ describe('HistoryPage', () => {
       updatedAt: timestamp,
     });
 
+    await db.sessionExercises.add({
+      id: sessionExerciseId,
+      workoutSessionId: sessionId,
+      dayExerciseId: createId('day-exercise'),
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+
+    await db.setResults.bulkAdd([
+      {
+        id: `${sessionExerciseId}-1`,
+        workoutSessionExerciseId: sessionExerciseId,
+        setNumber: 1,
+        status: 'success',
+        completedReps: 15,
+        usedWeight: 60,
+      },
+      {
+        id: `${sessionExerciseId}-2`,
+        workoutSessionExerciseId: sessionExerciseId,
+        setNumber: 2,
+        status: 'success',
+        completedReps: 15,
+        usedWeight: 60,
+      },
+      {
+        id: `${sessionExerciseId}-3`,
+        workoutSessionExerciseId: sessionExerciseId,
+        setNumber: 3,
+        status: 'success',
+        completedReps: 15,
+        usedWeight: 60,
+      },
+    ]);
+
     render(<HistoryPage />);
 
     const details = await screen.findByTestId(`history-session-${sessionId}`);
     expect(details).not.toHaveAttribute('open');
+    expect(screen.getByText('1/1 edukat')).toBeInTheDocument();
   });
 
   it('marks unfinished exercises in red', async () => {

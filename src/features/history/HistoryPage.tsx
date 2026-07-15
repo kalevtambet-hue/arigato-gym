@@ -41,9 +41,8 @@ export function HistoryPage() {
       resultsByExercise.set(result.workoutSessionExerciseId, list);
     }
 
-    return (sessions ?? []).map((session) => ({
-      session,
-      exercises: (sessionExercises ?? [])
+    return (sessions ?? []).map((session) => {
+      const exercises = (sessionExercises ?? [])
         .filter((item) => item.workoutSessionId === session.id)
         .filter((item) =>
           exerciseFilter.trim()
@@ -60,8 +59,14 @@ export function HistoryPage() {
               .map((value) => formatResultValue(item.repMode, value.completedReps))
               .join(' / '),
           };
-        }),
-    }));
+        });
+
+      return {
+        session,
+        exercises,
+        completedExercises: exercises.filter((item) => item.isComplete).length,
+      };
+    });
   }, [sessions, sessionExercises, setResults, exerciseFilter]);
 
   return (
@@ -79,11 +84,11 @@ export function HistoryPage() {
         </label>
       </div>
       <div className="stack">
-        {items.map(({ session, exercises }) => (
+        {items.map(({ session, exercises, completedExercises }) => (
           <details key={session.id} className="panel history-session" data-testid={`history-session-${session.id}`}>
             <summary className="history-summary">
               <strong>{new Date(session.performedAt).toLocaleDateString('et-EE')}</strong>
-              <span>{`${exercises.length} harjutust`}</span>
+              <span>{`${completedExercises}/${exercises.length} edukat`}</span>
             </summary>
             <ul className="stack-list">
               {exercises.map((item) => (
