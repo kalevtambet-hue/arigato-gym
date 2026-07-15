@@ -149,4 +149,61 @@ describe('HistoryPage', () => {
     const exerciseRow = await screen.findByTestId(`history-exercise-${sessionExerciseId}`);
     expect(exerciseRow).toHaveClass('history-item-failed');
   });
+
+  it('shows exercises in the performed order based on session orderIndex', async () => {
+    const timestamp = nowIso();
+    const sessionId = createId('session');
+    const firstExerciseId = createId('session-exercise');
+    const secondExerciseId = createId('session-exercise');
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: createId('day'),
+      performedAt: timestamp,
+      status: 'completed',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.bulkAdd([
+      {
+        id: firstExerciseId,
+        workoutSessionId: sessionId,
+        dayExerciseId: createId('day-exercise'),
+        exerciseName: 'Chest Press',
+        machineNumber: '12',
+        targetSets: 3,
+        successesRequired: 1,
+        repMode: 'range',
+        targetRepsMin: 10,
+        targetRepsMax: 15,
+        currentWeight: 60,
+        weightStep: 5,
+        orderIndex: 1,
+      },
+      {
+        id: secondExerciseId,
+        workoutSessionId: sessionId,
+        dayExerciseId: createId('day-exercise'),
+        exerciseName: 'Leg Press',
+        machineNumber: '17',
+        targetSets: 3,
+        successesRequired: 1,
+        repMode: 'range',
+        targetRepsMin: 10,
+        targetRepsMax: 15,
+        currentWeight: 100,
+        weightStep: 5,
+        orderIndex: 0,
+      },
+    ]);
+
+    render(<HistoryPage />);
+
+    const details = await screen.findByTestId(`history-session-${sessionId}`);
+    details.setAttribute('open', '');
+
+    const names = (await screen.findAllByRole('strong')).map((element) => element.textContent);
+    expect(names.slice(-2)).toEqual(['Leg Press', 'Chest Press']);
+  });
 });
