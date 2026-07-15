@@ -111,6 +111,7 @@ export async function importBackup(payload: BackupPayload) {
         payload.sessionExercises.map((item) => ({
           ...item,
           successesRequired: item.successesRequired ?? 1,
+          performedOrder: item.performedOrder ?? null,
         })),
       );
       await db.setResults.bulkAdd(

@@ -140,13 +140,41 @@ async function saveSetResult(
   status: SetResultRecord['status'],
   completedReps: number,
 ) {
-  await db.setResults.put({
-    id: `${sessionExercise.id}-${setNumber}`,
-    workoutSessionExerciseId: sessionExercise.id,
-    setNumber,
-    status,
-    completedReps,
-    usedWeight: isDurationMode(sessionExercise.repMode) ? null : sessionExercise.currentWeight,
+  await db.transaction('rw', db.setResults, db.sessionExercises, async () => {
+    const existingResults = await db.setResults
+      .where('workoutSessionExerciseId')
+      .equals(sessionExercise.id)
+      .toArray();
+    const persistedSetNumber = Math.max(
+      setNumber,
+      existingResults.reduce((maxValue, item) => Math.max(maxValue, item.setNumber), 0) + 1,
+    );
+
+    if (sessionExercise.performedOrder == null) {
+      const sessionItems = await db.sessionExercises
+        .where('workoutSessionId')
+        .equals(sessionExercise.workoutSessionId)
+        .toArray();
+      const nextPerformedOrder =
+        sessionItems.reduce(
+          (maxValue, item) =>
+            item.performedOrder == null ? maxValue : Math.max(maxValue, item.performedOrder),
+          -1,
+        ) + 1;
+
+      await db.sessionExercises.update(sessionExercise.id, {
+        performedOrder: nextPerformedOrder,
+      });
+    }
+
+    await db.setResults.put({
+      id: `${sessionExercise.id}-${persistedSetNumber}`,
+      workoutSessionExerciseId: sessionExercise.id,
+      setNumber: persistedSetNumber,
+      status,
+      completedReps,
+      usedWeight: isDurationMode(sessionExercise.repMode) ? null : sessionExercise.currentWeight,
+    });
   });
 }
 

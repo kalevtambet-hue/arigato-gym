@@ -49,7 +49,10 @@ export function HistoryPage() {
             ? item.exerciseName.toLowerCase().includes(exerciseFilter.toLowerCase())
             : true,
         )
-        .sort((left, right) => left.orderIndex - right.orderIndex)
+        .sort(
+          (left, right) =>
+            (left.performedOrder ?? left.orderIndex) - (right.performedOrder ?? right.orderIndex),
+        )
         .map((item) => {
           const rawResults = resultsByExercise.get(item.id) ?? [];
 

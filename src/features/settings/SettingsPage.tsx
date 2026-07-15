@@ -144,6 +144,10 @@ export function SettingsPage() {
             currentWeight: Number(row.currentWeight ?? 0),
             weightStep: Number(row.weightStep ?? 0),
             orderIndex: Number(row.orderIndex ?? 0),
+            performedOrder:
+              row.performedOrder === undefined || row.performedOrder === ''
+                ? null
+                : Number(row.performedOrder),
           }));
           break;
         case 'seeriad.csv':

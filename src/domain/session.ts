@@ -22,5 +22,6 @@ export function buildSessionExercises(
       currentWeight: item.currentWeight,
       weightStep: item.weightStep,
       orderIndex: index,
+      performedOrder: null,
     }));
 }

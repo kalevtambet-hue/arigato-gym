@@ -59,6 +59,7 @@ export type WorkoutSessionExerciseRecord = {
   currentWeight: number;
   weightStep: number;
   orderIndex: number;
+  performedOrder?: number | null;
 };
 
 export type SetResultRecord = {
