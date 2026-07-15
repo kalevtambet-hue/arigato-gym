@@ -48,11 +48,13 @@ export function createInMemorySeed() {
 }
 
 export async function ensureSeedData() {
-  const dayCount = await db.workoutDays.count();
-  if (dayCount === 0) {
-    const seed = createInMemorySeed();
-    await db.workoutDays.bulkAdd(seed.workoutDays);
-  }
+  await db.transaction('rw', db.workoutDays, async () => {
+    const dayCount = await db.workoutDays.count();
+    if (dayCount === 0) {
+      const seed = createInMemorySeed();
+      await db.workoutDays.bulkAdd(seed.workoutDays);
+    }
+  });
 }
 
 export async function exportBackup(): Promise<BackupPayload> {

@@ -165,7 +165,10 @@ async function removeWorkoutDay(id: string) {
 }
 
 export function ExercisesPage() {
-  void ensureSeedData();
+  useEffect(() => {
+    void ensureSeedData();
+  }, []);
+
   const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), []);
   const workoutDays = useLiveQuery(
     () => db.workoutDays.orderBy('sortOrder').filter((item) => !item.isArchived).toArray(),

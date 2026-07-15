@@ -264,7 +264,10 @@ async function cancelWorkout(sessionId: string) {
 }
 
 export function WorkoutPage() {
-  void ensureSeedData();
+  useEffect(() => {
+    void ensureSeedData();
+  }, []);
+
   const workoutDays = useLiveQuery(
     () => db.workoutDays.orderBy('sortOrder').filter((item) => !item.isArchived).toArray(),
     [],

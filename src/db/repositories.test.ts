@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from './appDb';
-import { createInMemorySeed, importBackup } from './repositories';
+import { createInMemorySeed, ensureSeedData, importBackup } from './repositories';
 
 describe('createInMemorySeed', () => {
   beforeEach(async () => {
@@ -55,5 +55,19 @@ describe('createInMemorySeed', () => {
     });
 
     expect((await db.setResults.get('set-1'))?.usedWeight).toBeNull();
+  });
+
+  it('creates default workout days only once even if initialization runs concurrently', async () => {
+    await Promise.all([
+      ensureSeedData(),
+      ensureSeedData(),
+      ensureSeedData(),
+      ensureSeedData(),
+    ]);
+
+    const days = await db.workoutDays.orderBy('sortOrder').toArray();
+
+    expect(days).toHaveLength(2);
+    expect(days.map((day) => day.name)).toEqual(['Päev 1', 'Päev 2']);
   });
 });

@@ -166,16 +166,18 @@ describe('WorkoutPage', () => {
 
     expect(await screen.findByText('Valitud päev')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Päev 1' })).toBeInTheDocument();
-    expect(screen.getByText('Õlale rahulik tempo')).toBeInTheDocument();
+    expect(await screen.findByText('Õlale rahulik tempo')).toBeInTheDocument();
     expect(screen.getByText('Päeva harjutused')).toBeInTheDocument();
-    expect(screen.getByText('Chest Press')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Alusta treeningut' })).toBeInTheDocument();
+    expect(await screen.findByText('Chest Press')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Alusta treeningut' })).toBeInTheDocument();
   });
 
-  it('shows a setup empty state when no workout days exist', async () => {
+  it('creates starter workout days automatically for a new user', async () => {
     render(<WorkoutPage />);
 
-    expect(await screen.findByText('Lisa esmalt treeningpäevad ja harjutused Kavad lehel.')).toBeInTheDocument();
+    expect(await screen.findByText('Valitud päev')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Päev 1' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Päev 2' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Alusta treeningut' })).not.toBeInTheDocument();
   });
 
