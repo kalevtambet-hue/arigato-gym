@@ -288,6 +288,39 @@ select {
   cursor: pointer;
 }
 
+.help-accordion {
+  gap: 0.75rem;
+}
+
+.help-details {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.7);
+  overflow: hidden;
+}
+
+.help-details summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.95rem 1rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.help-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.help-details[open] summary {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.help-content {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0 1rem 1rem;
+}
+
 @media (max-width: 640px) {
   .app-shell {
     padding-bottom: 5.15rem;

@@ -25,6 +25,49 @@ function downloadText(filename: string, content: string, type: string) {
 
 export function SettingsPage() {
   const versionLabel = `Versioon ${__APP_VERSION__} (${__APP_BUILD__})`;
+  const helpSections = [
+    {
+      title: 'Privaatsus',
+      content: [
+        'Rakendus ei kogu, ei analüüsi ega saada sinu treeningandmeid kuhugi serverisse.',
+        'Kõik andmed salvestatakse ainult sinu enda telefoni või brauseri kohalikku IndexedDB andmebaasi.',
+        'Andmed liiguvad seadmest välja ainult siis, kui sina ise kasutad ekspordi või varunduse funktsioone.',
+      ],
+    },
+    {
+      title: 'Paigaldamine',
+      content: [
+        'Ava rakendus telefoni brauseris selle HTTPS aadressi kaudu.',
+        'Androidis kasuta Chrome menüüst valikut Install app või Add to Home Screen.',
+        'iPhoneis ava rakendus Safaris ja kasuta Share -> Add to Home Screen.',
+      ],
+    },
+    {
+      title: 'Kasutamine',
+      content: [
+        'Lisa esmalt Kavad lehel baasharjutused ja treeningpäevad.',
+        'Seo harjutused päevadega ja määra seeriate arv, kordused või kestus ning raskus.',
+        'Treeningu lehel vali päev, alusta trenni ja märgi iga seeria eraldi tehtuks või ebaõnnestunuks.',
+        'Kui vaja, saad aktiivse harjutuse ajal muuta raskust ja järgmised seeriad kasutavad uut raskust kohe.',
+      ],
+    },
+    {
+      title: 'Varundus',
+      content: [
+        'Ekspordi varundus loob ühe täieliku JSON faili kogu andmestikust.',
+        'Ekspordi CSV salvestab tabelid eraldi failidena arvutis vaatamiseks või muutmiseks.',
+        'Impordi varundus või Impordi CSV kirjutab telefoni lokaalsed andmed vastava failiga üle.',
+      ],
+    },
+    {
+      title: 'Tõrkeotsing',
+      content: [
+        'Kui telefonis ei paista uus versioon, vaata Seaded lehelt buildi numbrit ja ava rakendus uuesti brauseris.',
+        'Kui andmed kaovad, taasta need eelnevalt eksporditud JSON või CSV failidest.',
+        'Kui iPhone ei paku paigaldust, kontrolli et kasutad Safarit ja HTTPS aadressi.',
+      ],
+    },
+  ] as const;
 
   const importCsvFiles = async (files: FileList | null) => {
     if (!files?.length) {
@@ -195,6 +238,24 @@ export function SettingsPage() {
             Rakendus on installitav brauseri menust. Pärast esmast avamist töötab see ka ilma internetita.
           </p>
           <p className="muted">{versionLabel}</p>
+        </article>
+
+        <article className="panel">
+          <h3>Abi</h3>
+          <div className="stack help-accordion">
+            {helpSections.map((section) => (
+              <details key={section.title} className="help-details">
+                <summary>{section.title}</summary>
+                <div className="help-content">
+                  {section.content.map((paragraph) => (
+                    <p key={paragraph} className="muted">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              </details>
+            ))}
+          </div>
         </article>
       </div>
     </section>
