@@ -273,6 +273,44 @@ select {
   color: #bae6fd;
 }
 
+.set-dots {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.set-dot {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 999px;
+  background: rgba(71, 85, 105, 1);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.set-dot-pending {
+  background: rgba(71, 85, 105, 1);
+}
+
+.set-dot-success {
+  background: #22c55e;
+  border-color: rgba(187, 247, 208, 0.45);
+}
+
+.set-dot-failed {
+  background: #ef4444;
+  border-color: rgba(254, 202, 202, 0.45);
+}
+
+.inline-failure-form {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border-radius: 0.95rem;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(248, 113, 113, 0.24);
+}
+
 .file-button {
   position: relative;
   display: inline-flex;

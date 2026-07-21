@@ -229,6 +229,123 @@ describe('WorkoutPage', () => {
     expect(screen.queryByRole('button', { name: 'Muuda raskust' })).not.toBeInTheDocument();
   });
 
+  it('shows failed set input inline inside the active workout card', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.add({
+      id: sessionExerciseId,
+      workoutSessionId: sessionId,
+      dayExerciseId: createId('day-exercise'),
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Ei tulnud täis' }));
+
+    const workoutCard = screen.getByTestId('active-workout-card');
+    expect(screen.getByLabelText('Tegelikud kordused')).toBeInTheDocument();
+    expect(workoutCard).toContainElement(screen.getByLabelText('Tegelikud kordused'));
+    expect(screen.queryByText('Ebaõnnestunud seeria')).not.toBeInTheDocument();
+  });
+
+  it('shows set progress dots for pending, successful and failed sets', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.add({
+      id: sessionExerciseId,
+      workoutSessionId: sessionId,
+      dayExerciseId: createId('day-exercise'),
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    const getDots = () => screen.getAllByTestId(/^set-dot-/);
+
+    expect(await screen.findByTestId('set-dot-1')).toHaveClass('set-dot-pending');
+    expect(getDots()).toHaveLength(3);
+
+    await user.click(screen.getByRole('button', { name: 'Tehtud' }));
+    await waitFor(() => {
+      expect(screen.getByTestId('set-dot-1')).toHaveClass('set-dot-success');
+    });
+    expect(screen.getByTestId('set-dot-2')).toHaveClass('set-dot-pending');
+
+    await user.click(screen.getByRole('button', { name: 'Ei tulnud täis' }));
+    await user.type(screen.getByLabelText('Tegelikud kordused'), '8');
+    await user.click(screen.getByRole('button', { name: 'Salvesta seeria' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('set-dot-2')).toHaveClass('set-dot-failed');
+    });
+    expect(screen.getByTestId('set-dot-3')).toHaveClass('set-dot-pending');
+  });
+
   it('allows changing the active exercise weight during a workout', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');

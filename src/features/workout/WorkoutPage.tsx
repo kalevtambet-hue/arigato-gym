@@ -47,6 +47,24 @@ function getSortedReps(results: SetResultRecord[]) {
   return results.sort((left, right) => left.setNumber - right.setNumber).map((entry) => entry.completedReps);
 }
 
+function getSetStates(
+  targetSets: number,
+  results: SetResultRecord[],
+): Array<'pending' | 'success' | 'failed'> {
+  const bySetNumber = new Map(results.map((item) => [item.setNumber, item.status]));
+
+  return Array.from({ length: targetSets }, (_, index) => {
+    const status = bySetNumber.get(index + 1);
+    if (status === 'success') {
+      return 'success';
+    }
+    if (status === 'failed') {
+      return 'failed';
+    }
+    return 'pending';
+  });
+}
+
 function buildHistoricalAttempts(
   item: WorkoutSessionExerciseRecord,
   completedSessions: WorkoutSessionRecord[],
@@ -410,6 +428,16 @@ export function WorkoutPage() {
     return (setResults ?? []).filter((item) => item.workoutSessionExerciseId === nextExercise.id).length + 1;
   }, [nextExercise, setResults]);
 
+  const nextExerciseResults = useMemo(
+    () => (setResults ?? []).filter((item) => item.workoutSessionExerciseId === nextExercise?.id),
+    [nextExercise?.id, setResults],
+  );
+
+  const nextExerciseSetStates = useMemo(
+    () => (nextExercise ? getSetStates(nextExercise.targetSets, nextExerciseResults) : []),
+    [nextExercise, nextExerciseResults],
+  );
+
   const progress = useMemo(() => {
     const totalExercises = (sessionExercises ?? []).length;
     const resultsCount = new Map<string, number>();
@@ -519,7 +547,7 @@ export function WorkoutPage() {
 
       {activeSession && nextExercise ? (
         <>
-          <article className="workout-card">
+          <article className="workout-card" data-testid="active-workout-card">
             <p className="eyebrow">Järgmine harjutus</p>
             <h3>{nextExercise.exerciseName}</h3>
             <p className="muted">
@@ -532,6 +560,16 @@ export function WorkoutPage() {
               )}
             </p>
             <p className="set-badge">Seeria {nextSetNumber}</p>
+            <div className="set-dots" aria-label="Seeriate seis">
+              {nextExerciseSetStates.map((state, index) => (
+                <span
+                  key={`${nextExercise.id}-set-${index + 1}`}
+                  data-testid={`set-dot-${index + 1}`}
+                  className={`set-dot set-dot-${state}`}
+                  aria-label={`Seeria ${index + 1}: ${state}`}
+                />
+              ))}
+            </div>
             <div className="button-stack">
               {!isDurationMode(nextExercise.repMode) ? (
                 <button
@@ -569,10 +607,52 @@ export function WorkoutPage() {
                 type="button"
                 className="warning-button"
                 onClick={() => setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' })}
-              >
-                Ei tulnud täis
-              </button>
-            </div>
+                >
+                  Ei tulnud täis
+                </button>
+              </div>
+            {failureTarget?.sessionExerciseId === nextExercise.id ? (
+              <div className="inline-failure-form">
+                <label htmlFor="completedReps">
+                  {failureExercise && isDurationMode(failureExercise.repMode)
+                    ? 'Tegelik kestus (min)'
+                    : 'Tegelikud kordused'}
+                  <input
+                    id="completedReps"
+                    type="number"
+                    value={failureTarget.reps}
+                    onChange={(event) =>
+                      setFailureTarget((current) => (current ? { ...current, reps: event.target.value } : current))
+                    }
+                  />
+                </label>
+                <div className="button-row">
+                  <button type="button" className="secondary-button" onClick={() => setFailureTarget(null)}>
+                    Loobu
+                  </button>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={async () => {
+                      const target = (sessionExercises ?? []).find((item) => item.id === failureTarget.sessionExerciseId);
+                      if (!target) {
+                        return;
+                      }
+
+                      await saveSetResult(
+                        target,
+                        failureTarget.setNumber,
+                        'failed',
+                        Number(failureTarget.reps || '0'),
+                      );
+                      setFailureTarget(null);
+                    }}
+                  >
+                    Salvesta seeria
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <button
               type="button"
               className="ghost-button"
@@ -698,50 +778,6 @@ export function WorkoutPage() {
               </li>
             ))}
           </ul>
-        </div>
-      ) : null}
-
-      {failureTarget ? (
-        <div className="modal-card">
-          <h3>Ebaõnnestunud seeria</h3>
-          <label htmlFor="completedReps">
-            {failureExercise && isDurationMode(failureExercise.repMode)
-              ? 'Tegelik kestus (min)'
-              : 'Tegelikud kordused'}
-            <input
-              id="completedReps"
-              type="number"
-              value={failureTarget.reps}
-              onChange={(event) =>
-                setFailureTarget((current) => (current ? { ...current, reps: event.target.value } : current))
-              }
-            />
-          </label>
-          <div className="button-row">
-            <button type="button" className="secondary-button" onClick={() => setFailureTarget(null)}>
-              Loobu
-            </button>
-            <button
-              type="button"
-              className="primary-button"
-              onClick={async () => {
-                const target = (sessionExercises ?? []).find((item) => item.id === failureTarget.sessionExerciseId);
-                if (!target) {
-                  return;
-                }
-
-                await saveSetResult(
-                  target,
-                  failureTarget.setNumber,
-                  'failed',
-                  Number(failureTarget.reps || '0'),
-                );
-                setFailureTarget(null);
-              }}
-            >
-              Salvesta seeria
-            </button>
-          </div>
         </div>
       ) : null}
 
