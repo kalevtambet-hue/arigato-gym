@@ -160,6 +160,26 @@ export function SettingsPage() {
             usedWeight: row.usedWeight === undefined || row.usedWeight === '' ? null : Number(row.usedWeight),
           }));
           break;
+        case 'harjutuse-sundmused.csv':
+          next.exerciseEvents = rows.map((row) => ({
+            id: String(row.id ?? ''),
+            exerciseId: String(row.exerciseId ?? ''),
+            sessionExerciseId:
+              row.sessionExerciseId === undefined || row.sessionExerciseId === ''
+                ? null
+                : String(row.sessionExerciseId),
+            createdAt: String(row.createdAt ?? ''),
+            type: row.type === 'change' ? 'change' : 'note',
+            actor: row.actor === 'automation' ? 'automation' : 'user',
+            field:
+              row.field === 'targetSets' || row.field === 'targetReps' || row.field === 'currentWeight'
+                ? row.field
+                : null,
+            fromValue: row.fromValue === undefined || row.fromValue === '' ? null : String(row.fromValue),
+            toValue: row.toValue === undefined || row.toValue === '' ? null : String(row.toValue),
+            noteText: row.noteText === undefined || row.noteText === '' ? null : String(row.noteText),
+          }));
+          break;
         default:
           break;
       }
@@ -201,6 +221,7 @@ export function SettingsPage() {
                 downloadText('sessioonid.csv', toCsv(payload.sessions), 'text/csv');
                 downloadText('sessiooni-harjutused.csv', toCsv(payload.sessionExercises), 'text/csv');
                 downloadText('seeriad.csv', toCsv(payload.setResults), 'text/csv');
+                downloadText('harjutuse-sundmused.csv', toCsv(payload.exerciseEvents), 'text/csv');
               }}
             >
               Ekspordi CSV

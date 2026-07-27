@@ -19,7 +19,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -127,7 +128,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   border-radius: 0.85rem;
   border: 1px solid rgba(148, 163, 184, 0.25);
@@ -309,6 +311,32 @@ select {
   border-radius: 0.95rem;
   background: rgba(15, 23, 42, 0.72);
   border: 1px solid rgba(248, 113, 113, 0.24);
+}
+
+.inline-notes-panel {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border-radius: 0.95rem;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+}
+
+.inline-notes-panel h4 {
+  margin: 0;
+}
+
+.inline-notes-panel textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.exercise-event-card.event-change.event-user {
+  border-color: rgba(56, 189, 248, 0.28);
+}
+
+.exercise-event-card.event-change.event-automation {
+  border-color: rgba(129, 140, 248, 0.28);
 }
 
 .file-button {

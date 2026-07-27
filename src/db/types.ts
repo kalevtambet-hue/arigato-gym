@@ -71,6 +71,21 @@ export type SetResultRecord = {
   usedWeight: number | null;
 };
 
+export type ExerciseEventField = 'targetSets' | 'targetReps' | 'currentWeight';
+
+export type ExerciseEventRecord = {
+  id: string;
+  exerciseId: string;
+  sessionExerciseId: string | null;
+  createdAt: string;
+  type: 'note' | 'change';
+  actor: 'user' | 'automation';
+  field: ExerciseEventField | null;
+  fromValue: string | null;
+  toValue: string | null;
+  noteText: string | null;
+};
+
 export type BackupPayload = {
   exercises: ExerciseRecord[];
   workoutDays: WorkoutDayRecord[];
@@ -78,4 +93,5 @@ export type BackupPayload = {
   sessions: WorkoutSessionRecord[];
   sessionExercises: WorkoutSessionExerciseRecord[];
   setResults: SetResultRecord[];
+  exerciseEvents: ExerciseEventRecord[];
 };

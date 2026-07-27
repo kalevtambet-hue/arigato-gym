@@ -4,6 +4,8 @@ import type {
   BackupPayload,
   DayExerciseRecord,
   ExerciseRecord,
+  ExerciseEventField,
+  ExerciseEventRecord,
   SetResultRecord,
   WorkoutDayRecord,
   WorkoutSessionExerciseRecord,
@@ -44,6 +46,7 @@ export function createInMemorySeed() {
     sessions: [] as WorkoutSessionRecord[],
     sessionExercises: [] as WorkoutSessionExerciseRecord[],
     setResults: [] as SetResultRecord[],
+    exerciseEvents: [] as ExerciseEventRecord[],
   };
 }
 
@@ -65,6 +68,7 @@ export async function exportBackup(): Promise<BackupPayload> {
     sessions,
     sessionExercises,
     setResults,
+    exerciseEvents,
   ] = await Promise.all([
     db.exercises.toArray(),
     db.workoutDays.orderBy('sortOrder').toArray(),
@@ -72,6 +76,7 @@ export async function exportBackup(): Promise<BackupPayload> {
     db.sessions.orderBy('performedAt').toArray(),
     db.sessionExercises.orderBy('orderIndex').toArray(),
     db.setResults.orderBy('setNumber').toArray(),
+    db.exerciseEvents.orderBy('createdAt').toArray(),
   ]);
 
   return {
@@ -81,15 +86,17 @@ export async function exportBackup(): Promise<BackupPayload> {
     sessions,
     sessionExercises,
     setResults,
+    exerciseEvents,
   };
 }
 
 export async function importBackup(payload: BackupPayload) {
   await db.transaction(
     'rw',
-    [db.exercises, db.workoutDays, db.dayExercises, db.sessions, db.sessionExercises, db.setResults],
+    [db.exercises, db.workoutDays, db.dayExercises, db.sessions, db.sessionExercises, db.setResults, db.exerciseEvents],
     async () => {
       await Promise.all([
+        db.exerciseEvents.clear(),
         db.setResults.clear(),
         db.sessionExercises.clear(),
         db.sessions.clear(),
@@ -120,6 +127,66 @@ export async function importBackup(payload: BackupPayload) {
           usedWeight: item.usedWeight ?? null,
         })),
       );
+      await db.exerciseEvents.bulkAdd(
+        (payload.exerciseEvents ?? []).map((item) => ({
+          ...item,
+          sessionExerciseId: item.sessionExerciseId ?? null,
+          field: item.field ?? null,
+          fromValue: item.fromValue ?? null,
+          toValue: item.toValue ?? null,
+          noteText: item.noteText ?? null,
+        })),
+      );
     },
   );
+}
+
+export async function addExerciseNote(input: {
+  exerciseId: string;
+  sessionExerciseId?: string | null;
+  noteText: string;
+}) {
+  const noteText = input.noteText.trim();
+  if (!noteText) {
+    return;
+  }
+
+  await db.exerciseEvents.add({
+    id: createId('exercise-event'),
+    exerciseId: input.exerciseId,
+    sessionExerciseId: input.sessionExerciseId ?? null,
+    createdAt: nowIso(),
+    type: 'note',
+    actor: 'user',
+    field: null,
+    fromValue: null,
+    toValue: null,
+    noteText,
+  });
+}
+
+export async function addExerciseChangeEvent(input: {
+  exerciseId: string;
+  sessionExerciseId?: string | null;
+  actor: 'user' | 'automation';
+  field: ExerciseEventField;
+  fromValue: string;
+  toValue: string;
+}) {
+  if (input.fromValue === input.toValue) {
+    return;
+  }
+
+  await db.exerciseEvents.add({
+    id: createId('exercise-event'),
+    exerciseId: input.exerciseId,
+    sessionExerciseId: input.sessionExerciseId ?? null,
+    createdAt: nowIso(),
+    type: 'change',
+    actor: input.actor,
+    field: input.field,
+    fromValue: input.fromValue,
+    toValue: input.toValue,
+    noteText: null,
+  });
 }

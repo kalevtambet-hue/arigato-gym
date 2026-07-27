@@ -57,6 +57,35 @@ describe('createInMemorySeed', () => {
     expect((await db.setResults.get('set-1'))?.usedWeight).toBeNull();
   });
 
+  it('imports exercise events and preserves actor metadata', async () => {
+    const seed = createInMemorySeed();
+
+    await importBackup({
+      ...seed,
+      exerciseEvents: [
+        {
+          id: 'event-1',
+          exerciseId: 'exercise-1',
+          sessionExerciseId: null,
+          createdAt: '2026-07-27T10:00:00.000Z',
+          type: 'note',
+          actor: 'user',
+          field: null,
+          fromValue: null,
+          toValue: null,
+          noteText: 'Hoia küünarnukid all',
+        },
+      ],
+    });
+
+    const events = await db.exerciseEvents.toArray();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      actor: 'user',
+      noteText: 'Hoia küünarnukid all',
+    });
+  });
+
   it('creates default workout days only once even if initialization runs concurrently', async () => {
     await Promise.all([
       ensureSeedData(),

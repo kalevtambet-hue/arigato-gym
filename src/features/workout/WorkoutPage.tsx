@@ -1,10 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState } from 'react';
 import { db } from '../../db/appDb';
-import { ensureSeedData } from '../../db/repositories';
+import { addExerciseChangeEvent, addExerciseNote, ensureSeedData } from '../../db/repositories';
 import type {
   DayExerciseRecord,
+  ExerciseEventRecord,
   ExerciseRecord,
+  RepMode,
   SetResultRecord,
   WorkoutSessionExerciseRecord,
   WorkoutSessionRecord,
@@ -45,6 +47,33 @@ function isSuccessfulAttempt(
 
 function getSortedReps(results: SetResultRecord[]) {
   return results.sort((left, right) => left.setNumber - right.setNumber).map((entry) => entry.completedReps);
+}
+
+function formatRepsValue(repMode: RepMode, min: number, max: number) {
+  if (repMode === 'fixed' || repMode === 'duration-fixed') {
+    return String(min);
+  }
+
+  return `${min}-${max}`;
+}
+
+function formatWeightValue(weight: number) {
+  return `${weight} kg`;
+}
+
+function formatExerciseEventDescription(event: ExerciseEventRecord) {
+  if (event.type === 'note') {
+    return `Märkus: ${event.noteText ?? ''}`;
+  }
+
+  const label =
+    event.field === 'targetSets'
+      ? 'Seeriad'
+      : event.field === 'targetReps'
+        ? 'Kordused'
+        : 'Raskus';
+
+  return `${label} ${event.fromValue ?? ''} -> ${event.toValue ?? ''}`;
 }
 
 function getSetStates(
@@ -196,9 +225,23 @@ async function saveSetResult(
   });
 }
 
-async function updateSessionExerciseWeight(id: string, currentWeight: number) {
+async function updateSessionExerciseWeight(
+  id: string,
+  exerciseId: string,
+  previousWeight: number,
+  currentWeight: number,
+) {
   await db.sessionExercises.update(id, {
     currentWeight,
+  });
+
+  await addExerciseChangeEvent({
+    exerciseId,
+    sessionExerciseId: id,
+    actor: 'user',
+    field: 'currentWeight',
+    fromValue: formatWeightValue(previousWeight),
+    toValue: formatWeightValue(currentWeight),
   });
 }
 
@@ -214,7 +257,7 @@ async function completeWorkout(
     resultsByExercise.set(result.workoutSessionExerciseId, list);
   }
 
-  await db.transaction('rw', db.dayExercises, db.sessions, db.sessionExercises, db.setResults, async () => {
+  await db.transaction('rw', db.dayExercises, db.sessions, db.sessionExercises, db.setResults, db.exerciseEvents, async () => {
     const completedSessions = await db.sessions.where('status').equals('completed').toArray();
     const historicalSessionExercises = await db.sessionExercises.toArray();
     const historicalSetResults = await db.setResults.toArray();
@@ -227,6 +270,11 @@ async function completeWorkout(
     }
 
     for (const item of sessionExercises) {
+      const dayExercise = await db.dayExercises.get(item.dayExerciseId);
+      if (!dayExercise) {
+        continue;
+      }
+
       const reps = getSortedReps(resultsByExercise.get(item.id) ?? []);
       const shouldAdvance = shouldAdvanceTarget(
         item,
@@ -248,6 +296,33 @@ async function completeWorkout(
         },
         shouldAdvance ? reps : [],
       );
+
+      await addExerciseChangeEvent({
+        exerciseId: dayExercise.exerciseId,
+        sessionExerciseId: item.id,
+        actor: 'automation',
+        field: 'targetSets',
+        fromValue: String(dayExercise.targetSets),
+        toValue: String(nextTarget.targetSets),
+      });
+      await addExerciseChangeEvent({
+        exerciseId: dayExercise.exerciseId,
+        sessionExerciseId: item.id,
+        actor: 'automation',
+        field: 'targetReps',
+        fromValue: formatRepsValue(item.repMode, dayExercise.targetRepsMin, dayExercise.targetRepsMax),
+        toValue: formatRepsValue(nextTarget.repMode, nextTarget.targetRepsMin, nextTarget.targetRepsMax),
+      });
+      if (!isDurationMode(item.repMode)) {
+        await addExerciseChangeEvent({
+          exerciseId: dayExercise.exerciseId,
+          sessionExerciseId: item.id,
+          actor: 'automation',
+          field: 'currentWeight',
+          fromValue: formatWeightValue(dayExercise.currentWeight),
+          toValue: formatWeightValue(nextTarget.currentWeight),
+        });
+      }
 
       await db.dayExercises.update(item.dayExerciseId, {
         targetRepsMin: nextTarget.targetRepsMin,
@@ -339,6 +414,7 @@ export function WorkoutPage() {
         : Promise.resolve<SetResultRecord[]>([]),
     [activeSession?.id, sessionExercises?.length],
   );
+  const exerciseEvents = useLiveQuery(() => db.exerciseEvents.toArray(), []);
   const [failureTarget, setFailureTarget] = useState<{
     sessionExerciseId: string;
     setNumber: number;
@@ -346,9 +422,13 @@ export function WorkoutPage() {
   } | null>(null);
   const [weightEditTarget, setWeightEditTarget] = useState<{
     sessionExerciseId: string;
+    exerciseId: string;
+    previousWeight: number;
     value: string;
   } | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+  const [notesOpenExerciseId, setNotesOpenExerciseId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
   const [completedSummary, setCompletedSummary] = useState<
     Array<{
       id: string;
@@ -395,6 +475,11 @@ export function WorkoutPage() {
   const selectedDayExercises = useMemo(
     () => (selectedDay ? dayExerciseGroups.get(selectedDay.id) ?? [] : []),
     [dayExerciseGroups, selectedDay],
+  );
+
+  const dayExerciseMap = useMemo(
+    () => new Map((dayExercises ?? []).map((item) => [item.id, item])),
+    [dayExercises],
   );
 
   const nextExercise = useMemo(() => {
@@ -465,6 +550,26 @@ export function WorkoutPage() {
     () => (sessionExercises ?? []).find((item) => item.id === failureTarget?.sessionExerciseId) ?? null,
     [failureTarget?.sessionExerciseId, sessionExercises],
   );
+
+  const nextExerciseBaseId = useMemo(
+    () => (nextExercise ? dayExerciseMap.get(nextExercise.dayExerciseId)?.exerciseId ?? null : null),
+    [dayExerciseMap, nextExercise],
+  );
+
+  const activeExerciseEvents = useMemo(
+    () =>
+      nextExerciseBaseId
+        ? (exerciseEvents ?? [])
+            .filter((item) => item.exerciseId === nextExerciseBaseId)
+            .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+        : [],
+    [exerciseEvents, nextExerciseBaseId],
+  );
+
+  useEffect(() => {
+    setNotesOpenExerciseId(null);
+    setNoteDraft('');
+  }, [nextExercise?.id]);
 
   return (
     <section className="page">
@@ -578,11 +683,24 @@ export function WorkoutPage() {
                   onClick={() =>
                     setWeightEditTarget({
                       sessionExerciseId: nextExercise.id,
+                      exerciseId: nextExerciseBaseId ?? '',
+                      previousWeight: nextExercise.currentWeight,
                       value: String(nextExercise.currentWeight),
                     })
                   }
                 >
                   Muuda raskust
+                </button>
+              ) : null}
+              {nextExerciseBaseId ? (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() =>
+                    setNotesOpenExerciseId((current) => (current === nextExercise.id ? null : nextExercise.id))
+                  }
+                >
+                  Märkmed
                 </button>
               ) : null}
               <button
@@ -651,6 +769,49 @@ export function WorkoutPage() {
                     Salvesta seeria
                   </button>
                 </div>
+              </div>
+            ) : null}
+            {notesOpenExerciseId === nextExercise.id && nextExerciseBaseId ? (
+              <div className="inline-notes-panel">
+                <h4>Sama harjutuse märkmed ja muudatused</h4>
+                <label htmlFor="exerciseNote">
+                  Lisa märkus
+                  <textarea
+                    id="exerciseNote"
+                    value={noteDraft}
+                    onChange={(event) => setNoteDraft(event.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={async () => {
+                    await addExerciseNote({
+                      exerciseId: nextExerciseBaseId,
+                      sessionExerciseId: nextExercise.id,
+                      noteText: noteDraft,
+                    });
+                    setNoteDraft('');
+                  }}
+                >
+                  Salvesta märkus
+                </button>
+                <ul className="stack-list">
+                  {activeExerciseEvents.length === 0 ? (
+                    <li className="empty-card">Selle harjutuse kohta veel märkmeid ega muudatusi ei ole.</li>
+                  ) : (
+                    activeExerciseEvents.map((item) => (
+                      <li
+                        key={item.id}
+                        className={`list-card exercise-event-card event-${item.type} event-${item.actor}`}
+                      >
+                        <strong>{new Date(item.createdAt).toLocaleString('et-EE')}</strong>
+                        <span>{item.actor === 'automation' ? 'Automaatika' : 'Kasutaja'}</span>
+                        <span>{formatExerciseEventDescription(item)}</span>
+                      </li>
+                    ))
+                  )}
+                </ul>
               </div>
             ) : null}
             <button
@@ -811,7 +972,12 @@ export function WorkoutPage() {
                   return;
                 }
 
-                await updateSessionExerciseWeight(weightEditTarget.sessionExerciseId, nextWeight);
+                await updateSessionExerciseWeight(
+                  weightEditTarget.sessionExerciseId,
+                  weightEditTarget.exerciseId,
+                  weightEditTarget.previousWeight,
+                  nextWeight,
+                );
                 setWeightEditTarget(null);
               }}
             >
