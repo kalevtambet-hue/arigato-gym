@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db/appDb';
@@ -392,8 +392,8 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    const workoutCard = await screen.findByTestId('active-workout-card');
-    const actionButtons = within(workoutCard)
+    const actionBar = await screen.findByTestId('sticky-action-bar');
+    const actionButtons = within(actionBar)
       .getAllByRole('button')
       .map((button) => button.textContent?.trim())
       .filter(Boolean);
@@ -571,7 +571,7 @@ describe('WorkoutPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Ei tulnud täis' }));
     expect(screen.getByLabelText('Tegelikud kordused')).toHaveAttribute('inputmode', 'numeric');
 
-    await user.click(screen.getByRole('button', { name: 'Muuda raskust' }));
+    await user.click(screen.getByRole('button', { name: /Muuda sihti Chest Press/i }));
     expect(screen.getByLabelText('Uus raskus (kg)')).toHaveAttribute('inputmode', 'decimal');
   });
 
@@ -743,7 +743,7 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Muuda raskust' }));
+    await user.click(await screen.findByRole('button', { name: /Muuda sihti Chest Press/i }));
     await user.clear(screen.getByLabelText('Uus raskus (kg)'));
     await user.type(screen.getByLabelText('Uus raskus (kg)'), '45');
     await user.click(screen.getByRole('button', { name: 'Salvesta raskus' }));
@@ -757,6 +757,139 @@ describe('WorkoutPage', () => {
       fromValue: '60 kg',
       toValue: '45 kg',
     });
+  });
+
+  it('allows editing a completed set from the set dot controls', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.add({
+      id: sessionExerciseId,
+      workoutSessionId: sessionId,
+      dayExerciseId: createId('day-exercise'),
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+
+    await db.setResults.add({
+      id: `${sessionExerciseId}-1`,
+      workoutSessionExerciseId: sessionExerciseId,
+      setNumber: 1,
+      status: 'success',
+      completedReps: 15,
+      usedWeight: 60,
+    });
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByTestId('set-dot-1'));
+    const editor = await screen.findByText('Muuda seeriat 1');
+    const editorCard = editor.closest('.inline-set-editor') as HTMLElement | null;
+    expect(editorCard).toBeTruthy();
+    await user.click(within(editorCard!).getByRole('button', { name: 'Ei tulnud täis' }));
+    await user.clear(within(editorCard!).getByLabelText('Tegelikud kordused'));
+    await user.type(within(editorCard!).getByLabelText('Tegelikud kordused'), '8');
+    await user.click(within(editorCard!).getByRole('button', { name: 'Salvesta muudatus' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('set-dot-1')).toHaveClass('set-dot-failed');
+    });
+    expect((await db.setResults.get(`${sessionExerciseId}-1`))?.completedReps).toBe(8);
+  });
+
+  it('allows deleting a saved set from the set dot editor', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.add({
+      id: sessionExerciseId,
+      workoutSessionId: sessionId,
+      dayExerciseId: createId('day-exercise'),
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+
+    await db.setResults.add({
+      id: `${sessionExerciseId}-1`,
+      workoutSessionExerciseId: sessionExerciseId,
+      setNumber: 1,
+      status: 'failed',
+      completedReps: 8,
+      usedWeight: 60,
+    });
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByTestId('set-dot-1'));
+    const editor = await screen.findByText('Muuda seeriat 1');
+    const editorCard = editor.closest('.inline-set-editor') as HTMLElement | null;
+    expect(editorCard).toBeTruthy();
+    await user.click(within(editorCard!).getByRole('button', { name: 'Kustuta seeria' }));
+
+    await waitFor(async () => {
+      expect(await db.setResults.get(`${sessionExerciseId}-1`)).toBeUndefined();
+    });
+    expect(screen.getByTestId('set-dot-1')).toHaveClass('set-dot-pending');
   });
 
   it('allows moving an upcoming exercise to be next in the active workout', async () => {
@@ -836,6 +969,76 @@ describe('WorkoutPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Chest Press' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Tee Leg Press järgmisena' }));
+
+    expect(await screen.findByRole('heading', { name: 'Leg Press' })).toBeInTheDocument();
+  });
+
+  it('allows swiping an upcoming exercise row to make it next', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const firstId = createId('session-exercise');
+    const secondId = createId('session-exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.bulkAdd([
+      {
+        id: firstId,
+        workoutSessionId: sessionId,
+        dayExerciseId: createId('day-exercise'),
+        exerciseName: 'Chest Press',
+        machineNumber: '12',
+        targetSets: 3,
+        successesRequired: 1,
+        repMode: 'range',
+        targetRepsMin: 10,
+        targetRepsMax: 15,
+        currentWeight: 60,
+        weightStep: 5,
+        orderIndex: 0,
+      },
+      {
+        id: secondId,
+        workoutSessionId: sessionId,
+        dayExerciseId: createId('day-exercise'),
+        exerciseName: 'Leg Press',
+        machineNumber: '17',
+        targetSets: 3,
+        successesRequired: 1,
+        repMode: 'range',
+        targetRepsMin: 10,
+        targetRepsMax: 15,
+        currentWeight: 100,
+        weightStep: 5,
+        orderIndex: 1,
+      },
+    ]);
+
+    render(<WorkoutPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Chest Press' })).toBeInTheDocument();
+    const swipeRow = screen.getByTestId(`upcoming-row-${secondId}`);
+
+    fireEvent.pointerDown(swipeRow, { clientX: 240 });
+    fireEvent.pointerUp(swipeRow, { clientX: 120 });
 
     expect(await screen.findByRole('heading', { name: 'Leg Press' })).toBeInTheDocument();
   });
@@ -1179,7 +1382,7 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Muuda raskust' }));
+    await user.click(await screen.findByRole('button', { name: /Muuda sihti Chest Press/i }));
     await user.clear(screen.getByLabelText('Uus raskus (kg)'));
     await user.type(screen.getByLabelText('Uus raskus (kg)'), '45');
     await user.click(screen.getByRole('button', { name: 'Salvesta raskus' }));
@@ -1250,7 +1453,7 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Muuda raskust' }));
+    await user.click(await screen.findByRole('button', { name: /Muuda sihti Chest Press/i }));
     await user.clear(screen.getByLabelText('Uus raskus (kg)'));
     await user.type(screen.getByLabelText('Uus raskus (kg)'), '45');
     await user.click(screen.getByRole('button', { name: 'Salvesta raskus' }));
@@ -1385,7 +1588,7 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Muuda raskust' }));
+    await user.click(await screen.findByRole('button', { name: /Muuda sihti Chest Press/i }));
     await user.clear(screen.getByLabelText('Uus raskus (kg)'));
     await user.type(screen.getByLabelText('Uus raskus (kg)'), '45');
     await user.click(screen.getByRole('button', { name: 'Salvesta raskus' }));

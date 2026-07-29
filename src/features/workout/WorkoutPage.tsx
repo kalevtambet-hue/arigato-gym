@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { db } from '../../db/appDb';
 import { addExerciseChangeEvent, addExerciseNote, ensureSeedData } from '../../db/repositories';
 import type {
@@ -403,6 +403,13 @@ async function undoSetResult(setResultId: string) {
   await db.setResults.delete(setResultId);
 }
 
+async function updateSetResult(
+  setResultId: string,
+  changes: Pick<SetResultRecord, 'status' | 'completedReps'>,
+) {
+  await db.setResults.update(setResultId, changes);
+}
+
 export function WorkoutPage() {
   useEffect(() => {
     void ensureSeedData();
@@ -463,6 +470,14 @@ export function WorkoutPage() {
     sessionExerciseId: string;
     remainingSeconds: number;
   } | null>(null);
+  const [setEditTarget, setSetEditTarget] = useState<{
+    id: string;
+    sessionExerciseId: string;
+    setNumber: number;
+    status: SetResultRecord['status'];
+    reps: string;
+  } | null>(null);
+  const swipeStartX = useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (!workoutDays?.length) {
@@ -599,6 +614,10 @@ export function WorkoutPage() {
   }, [nextExercise?.id]);
 
   useEffect(() => {
+    setSetEditTarget(null);
+  }, [nextExercise?.id]);
+
+  useEffect(() => {
     if (!restTimer || restTimer.remainingSeconds <= 0) {
       return;
     }
@@ -723,15 +742,39 @@ export function WorkoutPage() {
           <article className="workout-card" data-testid="active-workout-card">
             <p className="eyebrow">Järgmine harjutus</p>
             <h3>{nextExercise.exerciseName}</h3>
-            <p className="target-copy">
-              Masin #{nextExercise.machineNumber || '-'} · {nextExercise.targetSets} x{' '}
-              {formatTarget(
-                nextExercise.repMode,
-                nextExercise.targetRepsMin,
-                nextExercise.targetRepsMax,
-                nextExercise.currentWeight,
-              )}
-            </p>
+            {!isDurationMode(nextExercise.repMode) ? (
+              <button
+                type="button"
+                className="target-pill-button"
+                aria-label={`Muuda sihti ${nextExercise.exerciseName}`}
+                onClick={() =>
+                  setWeightEditTarget({
+                    sessionExerciseId: nextExercise.id,
+                    exerciseId: nextExerciseBaseId ?? '',
+                    previousWeight: nextExercise.currentWeight,
+                    value: String(nextExercise.currentWeight),
+                  })
+                }
+              >
+                Masin #{nextExercise.machineNumber || '-'} · {nextExercise.targetSets} x{' '}
+                {formatTarget(
+                  nextExercise.repMode,
+                  nextExercise.targetRepsMin,
+                  nextExercise.targetRepsMax,
+                  nextExercise.currentWeight,
+                )}
+              </button>
+            ) : (
+              <p className="target-copy">
+                Masin #{nextExercise.machineNumber || '-'} · {nextExercise.targetSets} x{' '}
+                {formatTarget(
+                  nextExercise.repMode,
+                  nextExercise.targetRepsMin,
+                  nextExercise.targetRepsMax,
+                  nextExercise.currentWeight,
+                )}
+              </p>
+            )}
             <p className="set-badge">Seeria {nextSetNumber}</p>
             <div className="set-dots" aria-label="Seeriate seis">
               {nextExerciseSetStates.map((state, index) => (
@@ -748,9 +791,12 @@ export function WorkoutPage() {
                       return;
                     }
 
-                    setLastSavedSet({
+                    setSetEditTarget({
                       id: targetResult.id,
                       sessionExerciseId: targetResult.workoutSessionExerciseId,
+                      setNumber: targetResult.setNumber,
+                      status: targetResult.status,
+                      reps: String(targetResult.completedReps),
                     });
                   }}
                 />
@@ -784,50 +830,7 @@ export function WorkoutPage() {
                 </button>
               </div>
             ) : null}
-            <div className="button-stack">
-              <button
-                type="button"
-                className="success-button"
-                onClick={() =>
-                  void handleSetSave(
-                    nextExercise,
-                    nextSetNumber,
-                    'success',
-                    getSuccessValue(
-                      nextExercise.repMode,
-                      nextExercise.targetRepsMin,
-                      nextExercise.targetRepsMax,
-                    ),
-                  )
-                }
-              >
-                Tehtud
-              </button>
-              <button
-                type="button"
-                className="warning-button"
-                onClick={() => setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' })}
-              >
-                Ei tulnud täis
-              </button>
-            </div>
             <div className="utility-button-row">
-              {!isDurationMode(nextExercise.repMode) ? (
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() =>
-                    setWeightEditTarget({
-                      sessionExerciseId: nextExercise.id,
-                      exerciseId: nextExerciseBaseId ?? '',
-                      previousWeight: nextExercise.currentWeight,
-                      value: String(nextExercise.currentWeight),
-                    })
-                  }
-                >
-                  Muuda raskust
-                </button>
-              ) : null}
               {nextExerciseBaseId ? (
                 <button
                   type="button"
@@ -840,6 +843,102 @@ export function WorkoutPage() {
                 </button>
               ) : null}
             </div>
+            {setEditTarget?.sessionExerciseId === nextExercise.id ? (
+              <div className="inline-set-editor">
+                <h4>{`Muuda seeriat ${setEditTarget.setNumber}`}</h4>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className={setEditTarget.status === 'success' ? 'success-button' : 'secondary-button'}
+                    onClick={() =>
+                      setSetEditTarget((current) =>
+                        current
+                          ? {
+                              ...current,
+                              status: 'success',
+                              reps: String(
+                                getSuccessValue(
+                                  nextExercise.repMode,
+                                  nextExercise.targetRepsMin,
+                                  nextExercise.targetRepsMax,
+                                ),
+                              ),
+                            }
+                          : current,
+                      )
+                    }
+                  >
+                    Tehtud
+                  </button>
+                  <button
+                    type="button"
+                    className={setEditTarget.status === 'failed' ? 'warning-button' : 'secondary-button'}
+                    onClick={() =>
+                      setSetEditTarget((current) =>
+                        current ? { ...current, status: 'failed', reps: current.reps || '' } : current,
+                      )
+                    }
+                  >
+                    Ei tulnud täis
+                  </button>
+                </div>
+                {setEditTarget.status === 'failed' ? (
+                  <label htmlFor="editCompletedReps">
+                    {isDurationMode(nextExercise.repMode) ? 'Tegelik kestus (min)' : 'Tegelikud kordused'}
+                    <input
+                      id="editCompletedReps"
+                      type="number"
+                      inputMode="numeric"
+                      value={setEditTarget.reps}
+                      onChange={(event) =>
+                        setSetEditTarget((current) =>
+                          current ? { ...current, reps: event.target.value } : current,
+                        )
+                      }
+                    />
+                  </label>
+                ) : null}
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={async () => {
+                      await undoSetResult(setEditTarget.id);
+                      setSetEditTarget(null);
+                    }}
+                  >
+                    Kustuta seeria
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setSetEditTarget(null)}
+                  >
+                    Loobu
+                  </button>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={async () => {
+                      await updateSetResult(setEditTarget.id, {
+                        status: setEditTarget.status,
+                        completedReps:
+                          setEditTarget.status === 'success'
+                            ? getSuccessValue(
+                                nextExercise.repMode,
+                                nextExercise.targetRepsMin,
+                                nextExercise.targetRepsMax,
+                              )
+                            : Number(setEditTarget.reps || '0'),
+                      });
+                      setSetEditTarget(null);
+                    }}
+                  >
+                    Salvesta muudatus
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {failureTarget?.sessionExerciseId === nextExercise.id ? (
               <div className="inline-failure-form">
                 <label htmlFor="completedReps">
@@ -947,12 +1046,27 @@ export function WorkoutPage() {
               <p className="eyebrow">Tulemas</p>
               <ul className="stack-list">
                 {upcomingExercises.map((item) => (
-                  <li key={item.id} className="list-card">
+                  <li
+                    key={item.id}
+                    className="list-card swipe-card"
+                    data-testid={`upcoming-row-${item.id}`}
+                    onPointerDown={(event) => {
+                      swipeStartX.current[item.id] = event.clientX;
+                    }}
+                    onPointerUp={(event) => {
+                      const startX = swipeStartX.current[item.id];
+                      if (startX - event.clientX > 60) {
+                        void moveSessionExerciseToNext(item.id, sessionExercises ?? [], setResults ?? []);
+                      }
+                      delete swipeStartX.current[item.id];
+                    }}
+                  >
                     <strong>{item.exerciseName}</strong>
-              <span>
-                Masin #{item.machineNumber || '-'} · {item.targetSets} x{' '}
-                {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}
+                    <span>
+                      Masin #{item.machineNumber || '-'} · {item.targetSets} x{' '}
+                      {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}
                     </span>
+                    <span className="swipe-hint">Tõmba vasakule, et teha järgmisena</span>
                     <button
                       type="button"
                       className="secondary-button"
@@ -967,6 +1081,36 @@ export function WorkoutPage() {
             </div>
           ) : null}
         </>
+      ) : null}
+
+      {activeSession && nextExercise ? (
+        <div className="sticky-action-bar" data-testid="sticky-action-bar">
+          <button
+            type="button"
+            className="success-button"
+            onClick={() =>
+              void handleSetSave(
+                nextExercise,
+                nextSetNumber,
+                'success',
+                getSuccessValue(
+                  nextExercise.repMode,
+                  nextExercise.targetRepsMin,
+                  nextExercise.targetRepsMax,
+                ),
+              )
+            }
+          >
+            Tehtud
+          </button>
+          <button
+            type="button"
+            className="warning-button"
+            onClick={() => setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' })}
+          >
+            Ei tulnud täis
+          </button>
+        </div>
       ) : null}
 
       {activeSession && !nextExercise && completedSummary.length === 0 ? (
