@@ -61,6 +61,12 @@ function formatWeightValue(weight: number) {
   return `${weight} kg`;
 }
 
+function formatRestTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+}
+
 function formatExerciseEventDescription(event: ExerciseEventRecord) {
   if (event.type === 'note') {
     return `Märkus: ${event.noteText ?? ''}`;
@@ -187,6 +193,8 @@ async function saveSetResult(
   status: SetResultRecord['status'],
   completedReps: number,
 ) {
+  let savedResultId = '';
+
   await db.transaction('rw', db.setResults, db.sessionExercises, async () => {
     const existingResults = await db.setResults
       .where('workoutSessionExerciseId')
@@ -214,8 +222,10 @@ async function saveSetResult(
       });
     }
 
+    savedResultId = `${sessionExercise.id}-${persistedSetNumber}`;
+
     await db.setResults.put({
-      id: `${sessionExercise.id}-${persistedSetNumber}`,
+      id: savedResultId,
       workoutSessionExerciseId: sessionExercise.id,
       setNumber: persistedSetNumber,
       status,
@@ -223,6 +233,11 @@ async function saveSetResult(
       usedWeight: isDurationMode(sessionExercise.repMode) ? null : sessionExercise.currentWeight,
     });
   });
+
+  return {
+    id: savedResultId,
+    sessionExerciseId: sessionExercise.id,
+  };
 }
 
 async function updateSessionExerciseWeight(
@@ -384,6 +399,10 @@ async function cancelWorkout(sessionId: string) {
   });
 }
 
+async function undoSetResult(setResultId: string) {
+  await db.setResults.delete(setResultId);
+}
+
 export function WorkoutPage() {
   useEffect(() => {
     void ensureSeedData();
@@ -436,6 +455,14 @@ export function WorkoutPage() {
       nextTarget: ReturnType<typeof computeNextTarget>;
     }>
   >([]);
+  const [lastSavedSet, setLastSavedSet] = useState<{
+    id: string;
+    sessionExerciseId: string;
+  } | null>(null);
+  const [restTimer, setRestTimer] = useState<{
+    sessionExerciseId: string;
+    remainingSeconds: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!workoutDays?.length) {
@@ -571,6 +598,46 @@ export function WorkoutPage() {
     setNoteDraft('');
   }, [nextExercise?.id]);
 
+  useEffect(() => {
+    if (!restTimer || restTimer.remainingSeconds <= 0) {
+      return;
+    }
+
+    const handle = window.setInterval(() => {
+      setRestTimer((current) => {
+        if (!current || current.remainingSeconds <= 1) {
+          return null;
+        }
+        return {
+          ...current,
+          remainingSeconds: current.remainingSeconds - 1,
+        };
+      });
+    }, 1000);
+
+    return () => window.clearInterval(handle);
+  }, [restTimer]);
+
+  async function handleSetSave(
+    sessionExercise: WorkoutSessionExerciseRecord,
+    setNumber: number,
+    status: SetResultRecord['status'],
+    completedReps: number,
+  ) {
+    const savedSet = await saveSetResult(sessionExercise, setNumber, status, completedReps);
+    setLastSavedSet(savedSet);
+
+    const restSeconds = dayExerciseMap.get(sessionExercise.dayExerciseId)?.restSeconds ?? 0;
+    setRestTimer(
+      restSeconds > 0
+        ? {
+            sessionExerciseId: sessionExercise.id,
+            remainingSeconds: restSeconds,
+          }
+        : null,
+    );
+  }
+
   return (
     <section className="page">
       <div className="section-header">
@@ -617,6 +684,19 @@ export function WorkoutPage() {
 
               <div className="panel">
                 <p className="eyebrow">Päeva harjutused</p>
+                {selectedDayExercises.length === 0 ? null : (
+                  <button
+                    type="button"
+                    className="hero-button"
+                    onClick={() => {
+                      if (selectedDay) {
+                        void startWorkout(selectedDay.id);
+                      }
+                    }}
+                  >
+                    Alusta treeningut
+                  </button>
+                )}
                 <ul className="stack-list preview-list">
                   {selectedDayExercises.map((item) => (
                     <li key={item.id} className="list-card">
@@ -631,19 +711,7 @@ export function WorkoutPage() {
                 </ul>
                 {selectedDayExercises.length === 0 ? (
                   <p className="empty-card">Sellel päeval pole veel harjutusi.</p>
-                ) : (
-                  <button
-                    type="button"
-                    className="hero-button"
-                    onClick={() => {
-                      if (selectedDay) {
-                        void startWorkout(selectedDay.id);
-                      }
-                    }}
-                  >
-                    Alusta treeningut
-                  </button>
-                )}
+                ) : null}
               </div>
             </>
           )}
@@ -655,7 +723,7 @@ export function WorkoutPage() {
           <article className="workout-card" data-testid="active-workout-card">
             <p className="eyebrow">Järgmine harjutus</p>
             <h3>{nextExercise.exerciseName}</h3>
-            <p className="muted">
+            <p className="target-copy">
               Masin #{nextExercise.machineNumber || '-'} · {nextExercise.targetSets} x{' '}
               {formatTarget(
                 nextExercise.repMode,
@@ -667,15 +735,83 @@ export function WorkoutPage() {
             <p className="set-badge">Seeria {nextSetNumber}</p>
             <div className="set-dots" aria-label="Seeriate seis">
               {nextExerciseSetStates.map((state, index) => (
-                <span
+                <button
+                  type="button"
                   key={`${nextExercise.id}-set-${index + 1}`}
                   data-testid={`set-dot-${index + 1}`}
                   className={`set-dot set-dot-${state}`}
                   aria-label={`Seeria ${index + 1}: ${state}`}
+                  disabled={state === 'pending'}
+                  onClick={() => {
+                    const targetResult = nextExerciseResults.find((item) => item.setNumber === index + 1);
+                    if (!targetResult) {
+                      return;
+                    }
+
+                    setLastSavedSet({
+                      id: targetResult.id,
+                      sessionExerciseId: targetResult.workoutSessionExerciseId,
+                    });
+                  }}
                 />
               ))}
             </div>
+            {restTimer?.sessionExerciseId === nextExercise.id ? (
+              <div className="rest-timer-panel">
+                <strong>Puhkus</strong>
+                <span>{formatRestTime(restTimer.remainingSeconds)}</span>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setRestTimer(null)}
+                >
+                  Jätan vahele
+                </button>
+              </div>
+            ) : null}
+            {lastSavedSet?.sessionExerciseId === nextExercise.id ? (
+              <div className="undo-row">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={async () => {
+                    await undoSetResult(lastSavedSet.id);
+                    setLastSavedSet(null);
+                    setRestTimer(null);
+                  }}
+                >
+                  Võta tagasi
+                </button>
+              </div>
+            ) : null}
             <div className="button-stack">
+              <button
+                type="button"
+                className="success-button"
+                onClick={() =>
+                  void handleSetSave(
+                    nextExercise,
+                    nextSetNumber,
+                    'success',
+                    getSuccessValue(
+                      nextExercise.repMode,
+                      nextExercise.targetRepsMin,
+                      nextExercise.targetRepsMax,
+                    ),
+                  )
+                }
+              >
+                Tehtud
+              </button>
+              <button
+                type="button"
+                className="warning-button"
+                onClick={() => setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' })}
+              >
+                Ei tulnud täis
+              </button>
+            </div>
+            <div className="utility-button-row">
               {!isDurationMode(nextExercise.repMode) ? (
                 <button
                   type="button"
@@ -703,32 +839,7 @@ export function WorkoutPage() {
                   Märkmed
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="success-button"
-                onClick={() =>
-                  void saveSetResult(
-                    nextExercise,
-                    nextSetNumber,
-                    'success',
-                    getSuccessValue(
-                      nextExercise.repMode,
-                      nextExercise.targetRepsMin,
-                      nextExercise.targetRepsMax,
-                    ),
-                  )
-                }
-              >
-                Tehtud
-              </button>
-              <button
-                type="button"
-                className="warning-button"
-                onClick={() => setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' })}
-                >
-                  Ei tulnud täis
-                </button>
-              </div>
+            </div>
             {failureTarget?.sessionExerciseId === nextExercise.id ? (
               <div className="inline-failure-form">
                 <label htmlFor="completedReps">
@@ -738,6 +849,7 @@ export function WorkoutPage() {
                   <input
                     id="completedReps"
                     type="number"
+                    inputMode="numeric"
                     value={failureTarget.reps}
                     onChange={(event) =>
                       setFailureTarget((current) => (current ? { ...current, reps: event.target.value } : current))
@@ -757,7 +869,7 @@ export function WorkoutPage() {
                         return;
                       }
 
-                      await saveSetResult(
+                      await handleSetSave(
                         target,
                         failureTarget.setNumber,
                         'failed',
@@ -837,9 +949,9 @@ export function WorkoutPage() {
                 {upcomingExercises.map((item) => (
                   <li key={item.id} className="list-card">
                     <strong>{item.exerciseName}</strong>
-                    <span>
-                      Masin #{item.machineNumber || '-'} · {item.targetSets} x{' '}
-                      {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}
+              <span>
+                Masin #{item.machineNumber || '-'} · {item.targetSets} x{' '}
+                {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}
                     </span>
                     <button
                       type="button"
@@ -950,6 +1062,7 @@ export function WorkoutPage() {
             <input
               id="sessionWeight"
               type="number"
+              inputMode="decimal"
               min="0"
               value={weightEditTarget.value}
               onChange={(event) =>

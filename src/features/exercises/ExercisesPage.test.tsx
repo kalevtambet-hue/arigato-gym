@@ -139,6 +139,7 @@ describe('ExercisesPage', () => {
     const user = userEvent.setup();
 
     await user.click((await screen.findAllByRole('button', { name: 'Päev 1' }))[0]);
+    await user.click(await screen.findByRole('button', { name: /Ava Chest Press/i }));
 
     expect(await screen.findByLabelText('Kordused')).toBeInTheDocument();
     expect(screen.queryByLabelText('Min kordused')).not.toBeInTheDocument();
@@ -159,6 +160,7 @@ describe('ExercisesPage', () => {
 
     await user.selectOptions(await screen.findByRole('combobox'), 'Ellips');
     await user.click(screen.getByRole('button', { name: 'Lisa päeva' }));
+    await user.click(await screen.findByRole('button', { name: /Ava Ellips/i }));
     await user.selectOptions(await screen.findByLabelText('Sihi tüüp'), 'duration-range');
 
     expect(await screen.findByLabelText('Min kestus (min)')).toBeInTheDocument();
@@ -204,6 +206,7 @@ describe('ExercisesPage', () => {
     const user = userEvent.setup();
 
     await user.click((await screen.findAllByRole('button', { name: 'Päev 1' }))[0]);
+    await user.click(await screen.findByRole('button', { name: /Ava Chest Press/i }));
     const field = await screen.findByLabelText('Õnnestumisi enne tõusu');
     await user.clear(field);
     await user.type(field, '2');
@@ -342,5 +345,89 @@ describe('ExercisesPage', () => {
 
     const updatedDay = (await db.workoutDays.toArray()).find((day) => day.name === 'Päev 1');
     expect(updatedDay?.notes).toBe('Õlale rahulik tempo');
+  });
+
+  it('keeps day exercise settings collapsed until the user opens one', async () => {
+    const seed = createInMemorySeed();
+    const timestamp = nowIso();
+    const exerciseId = createId('exercise');
+
+    await db.workoutDays.bulkAdd(seed.workoutDays);
+    await db.exercises.add({
+      id: exerciseId,
+      name: 'Chest Press',
+      machineNumber: '12',
+      notes: '',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await db.dayExercises.add({
+      id: createId('day-exercise'),
+      workoutDayId: seed.workoutDays[0].id,
+      exerciseId,
+      sortOrder: 0,
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      restSeconds: 90,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    render(<ExercisesPage />);
+    const user = userEvent.setup();
+
+    await user.click((await screen.findAllByRole('button', { name: 'Päev 1' }))[0]);
+
+    expect(screen.queryByLabelText('Seeriate arv')).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Ava Chest Press/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Ava Chest Press/i }));
+    expect(await screen.findByLabelText('Seeriate arv')).toBeInTheDocument();
+  });
+
+  it('uses mobile-friendly numeric keyboards in day exercise settings', async () => {
+    const seed = createInMemorySeed();
+    const timestamp = nowIso();
+    const exerciseId = createId('exercise');
+
+    await db.workoutDays.bulkAdd(seed.workoutDays);
+    await db.exercises.add({
+      id: exerciseId,
+      name: 'Chest Press',
+      machineNumber: '12',
+      notes: '',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await db.dayExercises.add({
+      id: createId('day-exercise'),
+      workoutDayId: seed.workoutDays[0].id,
+      exerciseId,
+      sortOrder: 0,
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      restSeconds: 90,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    render(<ExercisesPage />);
+    const user = userEvent.setup();
+
+    await user.click((await screen.findAllByRole('button', { name: 'Päev 1' }))[0]);
+    await user.click(await screen.findByRole('button', { name: /Ava Chest Press/i }));
+
+    expect(await screen.findByLabelText('Seeriate arv')).toHaveAttribute('inputmode', 'numeric');
+    expect(screen.getByLabelText('Raskus (kg)')).toHaveAttribute('inputmode', 'decimal');
   });
 });

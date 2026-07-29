@@ -1,4 +1,6 @@
+import { useLiveQuery } from 'dexie-react-hooks';
 import { NavLink } from 'react-router-dom';
+import { db } from '../db/appDb';
 
 const items = [
   { to: '/treening', label: 'Treening' },
@@ -8,6 +10,8 @@ const items = [
 ];
 
 export function BottomNav() {
+  const activeSession = useLiveQuery(() => db.sessions.where('status').equals('active').first(), []);
+
   return (
     <nav className="bottom-nav" aria-label="Põhinavigatsioon">
       {items.map((item) => (
@@ -16,7 +20,10 @@ export function BottomNav() {
           to={item.to}
           className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
         >
-          {item.label}
+          <span className="nav-link-label">{item.label}</span>
+          {item.to === '/treening' && activeSession ? (
+            <span className="nav-indicator" aria-label="Aktiivne treening" />
+          ) : null}
         </NavLink>
       ))}
     </nav>

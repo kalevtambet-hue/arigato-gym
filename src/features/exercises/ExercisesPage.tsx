@@ -179,6 +179,7 @@ export function ExercisesPage() {
   const [editingExercise, setEditingExercise] = useState<ExerciseRecord | null>(null);
   const [dayFormOpen, setDayFormOpen] = useState(false);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+  const [expandedExerciseIds, setExpandedExerciseIds] = useState<string[]>([]);
 
   const exerciseMap = useMemo(
     () => new Map((exercises ?? []).map((item) => [item.id, item])),
@@ -306,6 +307,7 @@ export function ExercisesPage() {
               day={(workoutDays ?? []).find((item) => item.id === selectedDayId) ?? null}
               exercises={exercises ?? []}
               items={groupedDayExercises.get(selectedDayId) ?? []}
+              expandedExerciseIds={expandedExerciseIds}
               onAddExercise={addDayExercise}
               onDuplicateDay={async (day) => {
                 const copiedId = await duplicateWorkoutDay(day, groupedDayExercises.get(day.id) ?? []);
@@ -320,6 +322,11 @@ export function ExercisesPage() {
               onUpdateDay={updateWorkoutDayDetails}
               onUpdate={updateDayExercise}
               onRemove={removeDayExercise}
+              onToggleExpanded={(id) =>
+                setExpandedExerciseIds((current) =>
+                  current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+                )
+              }
             />
           ) : (
             <p className="empty-card">Vali päev, et selle harjutusi seadistada.</p>
@@ -418,16 +425,19 @@ function WorkoutDayEditor({
   day,
   exercises,
   items,
+  expandedExerciseIds,
   onAddExercise,
   onDuplicateDay,
   onRemoveDay,
   onUpdateDay,
   onUpdate,
   onRemove,
+  onToggleExpanded,
 }: {
   day: WorkoutDayRecord | null;
   exercises: ExerciseRecord[];
   items: DayExerciseView[];
+  expandedExerciseIds: string[];
   onAddExercise: (workoutDayId: string, exerciseId: string) => Promise<void>;
   onDuplicateDay: (day: WorkoutDayRecord) => Promise<void>;
   onRemoveDay: (day: WorkoutDayRecord) => Promise<void>;
@@ -448,6 +458,7 @@ function WorkoutDayEditor({
     >,
   ) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
+  onToggleExpanded: (id: string) => void;
 }) {
   const [selectedExerciseId, setSelectedExerciseId] = useState('');
   const [dayName, setDayName] = useState(day?.name ?? '');
@@ -520,108 +531,121 @@ function WorkoutDayEditor({
               <p>Masin #{item.exercise?.machineNumber || '-'}</p>
               <p>{item.targetSets} x {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}</p>
             </div>
-            <button
-              type="button"
-              className="ghost-button"
-              onClick={() => {
-                if (window.confirm(`Eemaldada harjutus päevast?`)) {
-                  void onRemove(item.id);
-                }
-              }}
-            >
-              Eemalda
-            </button>
-          </div>
-          <div className="field-grid">
-            <NumberField
-              label="Seeriate arv"
-              value={item.targetSets}
-              onChange={(value) => void onUpdate(item.id, { targetSets: value })}
-            />
-            <NumberField
-              label="Õnnestumisi enne tõusu"
-              value={item.successesRequired}
-              min={1}
-              onChange={(value) => void onUpdate(item.id, { successesRequired: Math.max(1, value) })}
-            />
-            <label>
-              Sihi tüüp
-              <select
-                value={item.repMode}
-                onChange={(event) =>
-                  void onUpdate(item.id, buildModeChange(item, event.target.value as DayExerciseRecord['repMode']))
-                }
+            <div className="button-row">
+              <button
+                type="button"
+                className="secondary-button"
+                aria-expanded={expandedExerciseIds.includes(item.id)}
+                aria-label={`${expandedExerciseIds.includes(item.id) ? 'Sulge' : 'Ava'} ${item.exercise?.name ?? 'harjutus'}`}
+                onClick={() => onToggleExpanded(item.id)}
               >
-                <option value="range">Kordused vahemik</option>
-                <option value="fixed">Kordused fikseeritud</option>
-                <option value="duration-range">Kestus vahemik</option>
-                <option value="duration-fixed">Kestus fikseeritud</option>
-              </select>
-            </label>
-            {item.repMode === 'duration-fixed' ? (
+                {expandedExerciseIds.includes(item.id) ? 'Sulge' : 'Ava'}
+              </button>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => {
+                  if (window.confirm(`Eemaldada harjutus päevast?`)) {
+                    void onRemove(item.id);
+                  }
+                }}
+              >
+                Eemalda
+              </button>
+            </div>
+          </div>
+          {expandedExerciseIds.includes(item.id) ? (
+            <div className="field-grid">
               <NumberField
-                label="Kestus (min)"
-                value={item.targetRepsMin}
-                onChange={(value) =>
-                  void onUpdate(item.id, { targetRepsMin: value, targetRepsMax: value })
-                }
+                label="Seeriate arv"
+                value={item.targetSets}
+                onChange={(value) => void onUpdate(item.id, { targetSets: value })}
               />
-            ) : item.repMode === 'fixed' ? (
               <NumberField
-                label="Kordused"
-                value={item.targetRepsMin}
-                onChange={(value) =>
-                  void onUpdate(item.id, { targetRepsMin: value, targetRepsMax: value })
-                }
+                label="Õnnestumisi enne tõusu"
+                value={item.successesRequired}
+                min={1}
+                onChange={(value) => void onUpdate(item.id, { successesRequired: Math.max(1, value) })}
               />
-            ) : item.repMode === 'duration-range' ? (
-              <>
+              <label>
+                Sihi tüüp
+                <select
+                  value={item.repMode}
+                  onChange={(event) =>
+                    void onUpdate(item.id, buildModeChange(item, event.target.value as DayExerciseRecord['repMode']))
+                  }
+                >
+                  <option value="range">Kordused vahemik</option>
+                  <option value="fixed">Kordused fikseeritud</option>
+                  <option value="duration-range">Kestus vahemik</option>
+                  <option value="duration-fixed">Kestus fikseeritud</option>
+                </select>
+              </label>
+              {item.repMode === 'duration-fixed' ? (
                 <NumberField
-                  label="Min kestus (min)"
+                  label="Kestus (min)"
                   value={item.targetRepsMin}
-                  onChange={(value) => void onUpdate(item.id, { targetRepsMin: value })}
+                  onChange={(value) =>
+                    void onUpdate(item.id, { targetRepsMin: value, targetRepsMax: value })
+                  }
                 />
+              ) : item.repMode === 'fixed' ? (
                 <NumberField
-                  label="Max kestus (min)"
-                  value={item.targetRepsMax}
-                  onChange={(value) => void onUpdate(item.id, { targetRepsMax: value })}
-                />
-              </>
-            ) : (
-              <>
-                <NumberField
-                  label="Min kordused"
+                  label="Kordused"
                   value={item.targetRepsMin}
-                  onChange={(value) => void onUpdate(item.id, { targetRepsMin: value })}
+                  onChange={(value) =>
+                    void onUpdate(item.id, { targetRepsMin: value, targetRepsMax: value })
+                  }
                 />
+              ) : item.repMode === 'duration-range' ? (
+                <>
+                  <NumberField
+                    label="Min kestus (min)"
+                    value={item.targetRepsMin}
+                    onChange={(value) => void onUpdate(item.id, { targetRepsMin: value })}
+                  />
+                  <NumberField
+                    label="Max kestus (min)"
+                    value={item.targetRepsMax}
+                    onChange={(value) => void onUpdate(item.id, { targetRepsMax: value })}
+                  />
+                </>
+              ) : (
+                <>
+                  <NumberField
+                    label="Min kordused"
+                    value={item.targetRepsMin}
+                    onChange={(value) => void onUpdate(item.id, { targetRepsMin: value })}
+                  />
+                  <NumberField
+                    label="Max kordused"
+                    value={item.targetRepsMax}
+                    onChange={(value) => void onUpdate(item.id, { targetRepsMax: value })}
+                  />
+                </>
+              )}
+              {isDurationMode(item.repMode) ? (
                 <NumberField
-                  label="Max kordused"
-                  value={item.targetRepsMax}
-                  onChange={(value) => void onUpdate(item.id, { targetRepsMax: value })}
-                />
-              </>
-            )}
-            {isDurationMode(item.repMode) ? (
-              <NumberField
-                label="Kestuse samm (min)"
-                value={item.weightStep}
-                onChange={(value) => void onUpdate(item.id, { weightStep: value })}
-              />
-            ) : (
-              <>
-                <NumberField
-                  label="Raskus (kg)"
-                  value={item.currentWeight}
-                  onChange={(value) => void onUpdate(item.id, { currentWeight: value })}
-                />
-                <NumberField
-                  label="Raskuse samm (kg)"
+                  label="Kestuse samm (min)"
                   value={item.weightStep}
                   onChange={(value) => void onUpdate(item.id, { weightStep: value })}
                 />
-              </>
-            )}
-          </div>
+              ) : (
+                <>
+                  <NumberField
+                    label="Raskus (kg)"
+                    value={item.currentWeight}
+                    onChange={(value) => void onUpdate(item.id, { currentWeight: value })}
+                  />
+                  <NumberField
+                    label="Raskuse samm (kg)"
+                    value={item.weightStep}
+                    onChange={(value) => void onUpdate(item.id, { weightStep: value })}
+                  />
+                </>
+              )}
+            </div>
+          ) : null}
         </div>
       ))}
     </div>
@@ -674,6 +698,7 @@ function NumberField({
       {label}
       <input
         type="number"
+        inputMode={label.includes('Raskus') ? 'decimal' : 'numeric'}
         value={draftValue}
         min={min}
         onChange={(event) => {
