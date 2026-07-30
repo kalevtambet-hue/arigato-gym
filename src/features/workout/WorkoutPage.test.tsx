@@ -496,7 +496,7 @@ describe('WorkoutPage', () => {
     });
   });
 
-  it('uses mobile-friendly numeric keyboards for failed reps and weight editing', async () => {
+  it('uses mobile-friendly numeric keyboards for failed reps and target editing', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');
     const exerciseId = createId('exercise');
@@ -572,7 +572,8 @@ describe('WorkoutPage', () => {
     expect(screen.getByLabelText('Tegelikud kordused')).toHaveAttribute('inputmode', 'numeric');
 
     await user.click(screen.getByRole('button', { name: /Muuda sihti Chest Press/i }));
-    expect(screen.getByLabelText('Uus raskus (kg)')).toHaveAttribute('inputmode', 'decimal');
+    expect(screen.getByLabelText('Raskus (kg)')).toHaveAttribute('inputmode', 'decimal');
+    expect(screen.getByLabelText('Seeriate arv')).toHaveAttribute('inputmode', 'numeric');
   });
 
   it('shows exercise notes history and lets the user add a note', async () => {
@@ -671,7 +672,7 @@ describe('WorkoutPage', () => {
     expect(await screen.findByText(/Uus märkus/)).toBeInTheDocument();
   });
 
-  it('allows changing the active exercise weight during a workout', async () => {
+  it('allows changing the active exercise target during a workout', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');
     const exerciseId = createId('exercise');
@@ -744,19 +745,52 @@ describe('WorkoutPage', () => {
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole('button', { name: /Muuda sihti Chest Press/i }));
-    await user.clear(screen.getByLabelText('Uus raskus (kg)'));
-    await user.type(screen.getByLabelText('Uus raskus (kg)'), '45');
-    await user.click(screen.getByRole('button', { name: 'Salvesta raskus' }));
+    await user.clear(screen.getByLabelText('Seeriate arv'));
+    await user.type(screen.getByLabelText('Seeriate arv'), '4');
+    await user.clear(screen.getByLabelText('Min kordused'));
+    await user.type(screen.getByLabelText('Min kordused'), '8');
+    await user.clear(screen.getByLabelText('Max kordused'));
+    await user.type(screen.getByLabelText('Max kordused'), '12');
+    await user.clear(screen.getByLabelText('Raskus (kg)'));
+    await user.type(screen.getByLabelText('Raskus (kg)'), '45');
+    await user.click(screen.getByRole('button', { name: 'Salvesta siht' }));
 
-    expect(await screen.findByText((content) => content.includes('3 x 10-15 x 45 kg'))).toBeInTheDocument();
-    expect((await db.sessionExercises.get(sessionExerciseId))?.currentWeight).toBe(45);
-    const changeEvent = await db.exerciseEvents.orderBy('createdAt').last();
-    expect(changeEvent).toMatchObject({
-      actor: 'user',
-      field: 'currentWeight',
-      fromValue: '60 kg',
-      toValue: '45 kg',
+    expect(await screen.findByText((content) => content.includes('4 x 8-12 x 45 kg'))).toBeInTheDocument();
+    expect(await db.sessionExercises.get(sessionExerciseId)).toMatchObject({
+      targetSets: 4,
+      targetRepsMin: 8,
+      targetRepsMax: 12,
+      currentWeight: 45,
     });
+    expect(await db.dayExercises.get(dayExerciseId)).toMatchObject({
+      targetSets: 4,
+      targetRepsMin: 8,
+      targetRepsMax: 12,
+      currentWeight: 45,
+    });
+    const changeEvents = await db.exerciseEvents.orderBy('createdAt').toArray();
+    expect(changeEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          actor: 'user',
+          field: 'targetSets',
+          fromValue: '3',
+          toValue: '4',
+        }),
+        expect.objectContaining({
+          actor: 'user',
+          field: 'targetReps',
+          fromValue: '10-15',
+          toValue: '8-12',
+        }),
+        expect.objectContaining({
+          actor: 'user',
+          field: 'currentWeight',
+          fromValue: '60 kg',
+          toValue: '45 kg',
+        }),
+      ]),
+    );
   });
 
   it('allows editing a completed set from the set dot controls', async () => {
@@ -973,7 +1007,7 @@ describe('WorkoutPage', () => {
     expect(await screen.findByRole('heading', { name: 'Leg Press' })).toBeInTheDocument();
   });
 
-  it('allows swiping an upcoming exercise row to make it next', async () => {
+  it('allows swiping an upcoming exercise row to make it next on touch devices', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');
     const sessionId = createId('session');
@@ -1037,8 +1071,8 @@ describe('WorkoutPage', () => {
     expect(await screen.findByRole('heading', { name: 'Chest Press' })).toBeInTheDocument();
     const swipeRow = screen.getByTestId(`upcoming-row-${secondId}`);
 
-    fireEvent.pointerDown(swipeRow, { clientX: 240 });
-    fireEvent.pointerUp(swipeRow, { clientX: 120 });
+    fireEvent.touchStart(swipeRow, { changedTouches: [{ clientX: 240 }] });
+    fireEvent.touchEnd(swipeRow, { changedTouches: [{ clientX: 120 }] });
 
     expect(await screen.findByRole('heading', { name: 'Leg Press' })).toBeInTheDocument();
   });
@@ -1383,9 +1417,9 @@ describe('WorkoutPage', () => {
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole('button', { name: /Muuda sihti Chest Press/i }));
-    await user.clear(screen.getByLabelText('Uus raskus (kg)'));
-    await user.type(screen.getByLabelText('Uus raskus (kg)'), '45');
-    await user.click(screen.getByRole('button', { name: 'Salvesta raskus' }));
+    await user.clear(screen.getByLabelText('Raskus (kg)'));
+    await user.type(screen.getByLabelText('Raskus (kg)'), '45');
+    await user.click(screen.getByRole('button', { name: 'Salvesta siht' }));
     await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
 
     expect((await db.setResults.get(`${sessionExerciseId}-1`))?.usedWeight).toBe(45);
@@ -1454,16 +1488,19 @@ describe('WorkoutPage', () => {
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole('button', { name: /Muuda sihti Chest Press/i }));
-    await user.clear(screen.getByLabelText('Uus raskus (kg)'));
-    await user.type(screen.getByLabelText('Uus raskus (kg)'), '45');
-    await user.click(screen.getByRole('button', { name: 'Salvesta raskus' }));
+    await user.clear(screen.getByLabelText('Raskus (kg)'));
+    await user.type(screen.getByLabelText('Raskus (kg)'), '45');
+    await user.click(screen.getByRole('button', { name: 'Salvesta siht' }));
     await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
     await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
     await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
     await user.click(await screen.findByRole('button', { name: 'Lõpeta treening' }));
 
-    expect(await screen.findByText('Järgmine siht')).toBeInTheDocument();
-    expect(screen.getByText('3 x 10-15 x 45 kg')).toBeInTheDocument();
+    const nextTargetHeading = await screen.findByText('Järgmine siht');
+    expect(nextTargetHeading).toBeInTheDocument();
+    const nextTargetPanel = nextTargetHeading.closest('.panel') as HTMLElement | null;
+    expect(nextTargetPanel).toBeTruthy();
+    expect(within(nextTargetPanel!).getByText('3 x 10-15 x 45 kg')).toBeInTheDocument();
 
     await waitFor(async () => {
       expect((await db.dayExercises.get(dayExerciseId))?.currentWeight).toBe(45);
@@ -1589,9 +1626,9 @@ describe('WorkoutPage', () => {
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole('button', { name: /Muuda sihti Chest Press/i }));
-    await user.clear(screen.getByLabelText('Uus raskus (kg)'));
-    await user.type(screen.getByLabelText('Uus raskus (kg)'), '45');
-    await user.click(screen.getByRole('button', { name: 'Salvesta raskus' }));
+    await user.clear(screen.getByLabelText('Raskus (kg)'));
+    await user.type(screen.getByLabelText('Raskus (kg)'), '45');
+    await user.click(screen.getByRole('button', { name: 'Salvesta siht' }));
     await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
     await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
     await user.click(await screen.findByRole('button', { name: 'Tehtud' }));

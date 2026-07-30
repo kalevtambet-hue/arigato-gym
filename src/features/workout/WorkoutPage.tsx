@@ -196,19 +196,20 @@ async function saveSetResult(
   let savedResultId = '';
 
   await db.transaction('rw', db.setResults, db.sessionExercises, async () => {
+    const freshSessionExercise = (await db.sessionExercises.get(sessionExercise.id)) ?? sessionExercise;
     const existingResults = await db.setResults
       .where('workoutSessionExerciseId')
-      .equals(sessionExercise.id)
+      .equals(freshSessionExercise.id)
       .toArray();
     const persistedSetNumber = Math.max(
       setNumber,
       existingResults.reduce((maxValue, item) => Math.max(maxValue, item.setNumber), 0) + 1,
     );
 
-    if (sessionExercise.performedOrder == null) {
+    if (freshSessionExercise.performedOrder == null) {
       const sessionItems = await db.sessionExercises
         .where('workoutSessionId')
-        .equals(sessionExercise.workoutSessionId)
+        .equals(freshSessionExercise.workoutSessionId)
         .toArray();
       const nextPerformedOrder =
         sessionItems.reduce(
@@ -217,20 +218,20 @@ async function saveSetResult(
           -1,
         ) + 1;
 
-      await db.sessionExercises.update(sessionExercise.id, {
+      await db.sessionExercises.update(freshSessionExercise.id, {
         performedOrder: nextPerformedOrder,
       });
     }
 
-    savedResultId = `${sessionExercise.id}-${persistedSetNumber}`;
+    savedResultId = `${freshSessionExercise.id}-${persistedSetNumber}`;
 
     await db.setResults.put({
       id: savedResultId,
-      workoutSessionExerciseId: sessionExercise.id,
+      workoutSessionExerciseId: freshSessionExercise.id,
       setNumber: persistedSetNumber,
       status,
       completedReps,
-      usedWeight: isDurationMode(sessionExercise.repMode) ? null : sessionExercise.currentWeight,
+      usedWeight: isDurationMode(freshSessionExercise.repMode) ? null : freshSessionExercise.currentWeight,
     });
   });
 
@@ -240,23 +241,85 @@ async function saveSetResult(
   };
 }
 
-async function updateSessionExerciseWeight(
-  id: string,
-  exerciseId: string,
-  previousWeight: number,
-  currentWeight: number,
-) {
-  await db.sessionExercises.update(id, {
-    currentWeight,
-  });
-
-  await addExerciseChangeEvent({
+async function updateSessionExerciseTarget(params: {
+  sessionExercise: WorkoutSessionExerciseRecord;
+  exerciseId: string;
+  targetSets: number;
+  repMode: RepMode;
+  targetRepsMin: number;
+  targetRepsMax: number;
+  currentWeight: number;
+}) {
+  const {
+    sessionExercise,
     exerciseId,
-    sessionExerciseId: id,
-    actor: 'user',
-    field: 'currentWeight',
-    fromValue: formatWeightValue(previousWeight),
-    toValue: formatWeightValue(currentWeight),
+    targetSets,
+    repMode,
+    targetRepsMin,
+    targetRepsMax,
+    currentWeight,
+  } = params;
+
+  const dayExercise = await db.dayExercises.get(sessionExercise.dayExerciseId);
+
+  await db.transaction('rw', db.sessionExercises, db.dayExercises, db.exerciseEvents, async () => {
+    await db.sessionExercises.update(sessionExercise.id, {
+      targetSets,
+      repMode,
+      targetRepsMin,
+      targetRepsMax,
+      currentWeight,
+    });
+
+    if (dayExercise) {
+      await db.dayExercises.update(sessionExercise.dayExerciseId, {
+        targetSets,
+        repMode,
+        targetRepsMin,
+        targetRepsMax,
+        currentWeight,
+        updatedAt: nowIso(),
+      });
+    }
+
+    if (sessionExercise.targetSets !== targetSets && exerciseId) {
+      await addExerciseChangeEvent({
+        exerciseId,
+        sessionExerciseId: sessionExercise.id,
+        actor: 'user',
+        field: 'targetSets',
+        fromValue: String(sessionExercise.targetSets),
+        toValue: String(targetSets),
+      });
+    }
+
+    const previousReps = formatRepsValue(
+      sessionExercise.repMode,
+      sessionExercise.targetRepsMin,
+      sessionExercise.targetRepsMax,
+    );
+    const nextReps = formatRepsValue(repMode, targetRepsMin, targetRepsMax);
+    if ((previousReps !== nextReps || sessionExercise.repMode !== repMode) && exerciseId) {
+      await addExerciseChangeEvent({
+        exerciseId,
+        sessionExerciseId: sessionExercise.id,
+        actor: 'user',
+        field: 'targetReps',
+        fromValue: previousReps,
+        toValue: nextReps,
+      });
+    }
+
+    if (sessionExercise.currentWeight !== currentWeight && !isDurationMode(repMode) && exerciseId) {
+      await addExerciseChangeEvent({
+        exerciseId,
+        sessionExerciseId: sessionExercise.id,
+        actor: 'user',
+        field: 'currentWeight',
+        fromValue: formatWeightValue(sessionExercise.currentWeight),
+        toValue: formatWeightValue(currentWeight),
+      });
+    }
   });
 }
 
@@ -449,8 +512,11 @@ export function WorkoutPage() {
   const [weightEditTarget, setWeightEditTarget] = useState<{
     sessionExerciseId: string;
     exerciseId: string;
-    previousWeight: number;
-    value: string;
+    targetSets: string;
+    repMode: RepMode;
+    targetRepsMin: string;
+    targetRepsMax: string;
+    currentWeight: string;
   } | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [notesOpenExerciseId, setNotesOpenExerciseId] = useState<string | null>(null);
@@ -751,8 +817,11 @@ export function WorkoutPage() {
                   setWeightEditTarget({
                     sessionExerciseId: nextExercise.id,
                     exerciseId: nextExerciseBaseId ?? '',
-                    previousWeight: nextExercise.currentWeight,
-                    value: String(nextExercise.currentWeight),
+                    targetSets: String(nextExercise.targetSets),
+                    repMode: nextExercise.repMode,
+                    targetRepsMin: String(nextExercise.targetRepsMin),
+                    targetRepsMax: String(nextExercise.targetRepsMax),
+                    currentWeight: String(nextExercise.currentWeight),
                   })
                 }
               >
@@ -1060,6 +1129,17 @@ export function WorkoutPage() {
                       }
                       delete swipeStartX.current[item.id];
                     }}
+                    onTouchStart={(event) => {
+                      swipeStartX.current[item.id] = event.changedTouches[0]?.clientX ?? 0;
+                    }}
+                    onTouchEnd={(event) => {
+                      const startX = swipeStartX.current[item.id];
+                      const endX = event.changedTouches[0]?.clientX ?? startX;
+                      if (startX - endX > 60) {
+                        void moveSessionExerciseToNext(item.id, sessionExercises ?? [], setResults ?? []);
+                      }
+                      delete swipeStartX.current[item.id];
+                    }}
                   >
                     <strong>{item.exerciseName}</strong>
                     <span>
@@ -1200,22 +1280,97 @@ export function WorkoutPage() {
 
       {weightEditTarget ? (
         <div className="modal-card">
-          <h3>Muuda raskust</h3>
-          <label htmlFor="sessionWeight">
-            Uus raskus (kg)
+          <h3>Muuda sihti</h3>
+          <label htmlFor="sessionTargetSets">
+            Seeriate arv
             <input
-              id="sessionWeight"
+              id="sessionTargetSets"
               type="number"
-              inputMode="decimal"
-              min="0"
-              value={weightEditTarget.value}
+              inputMode="numeric"
+              min="1"
+              value={weightEditTarget.targetSets}
               onChange={(event) =>
                 setWeightEditTarget((current) =>
-                  current ? { ...current, value: event.target.value } : current,
+                  current ? { ...current, targetSets: event.target.value } : current,
                 )
               }
             />
           </label>
+          <label htmlFor="sessionRepMode">
+            Tüüp
+            <select
+              id="sessionRepMode"
+              value={weightEditTarget.repMode}
+              onChange={(event) =>
+                setWeightEditTarget((current) =>
+                  current ? { ...current, repMode: event.target.value as RepMode } : current,
+                )
+              }
+            >
+              <option value="range">Korduste vahemik + raskus</option>
+              <option value="fixed">Fikseeritud kordused + raskus</option>
+              <option value="duration-range">Ajavahemik</option>
+              <option value="duration-fixed">Fikseeritud aeg</option>
+            </select>
+          </label>
+          <label htmlFor="sessionTargetMin">
+            {weightEditTarget.repMode === 'fixed' || weightEditTarget.repMode === 'duration-fixed'
+              ? weightEditTarget.repMode === 'duration-fixed'
+                ? 'Kestus (min)'
+                : 'Kordused'
+              : weightEditTarget.repMode === 'duration-range'
+                ? 'Min kestus (min)'
+                : 'Min kordused'}
+            <input
+              id="sessionTargetMin"
+              type="number"
+              inputMode="numeric"
+              min="1"
+              value={weightEditTarget.targetRepsMin}
+              onChange={(event) =>
+                setWeightEditTarget((current) =>
+                  current ? { ...current, targetRepsMin: event.target.value } : current,
+                )
+              }
+            />
+          </label>
+          {weightEditTarget.repMode === 'range' || weightEditTarget.repMode === 'duration-range' ? (
+            <label htmlFor="sessionTargetMax">
+              {weightEditTarget.repMode === 'duration-range' ? 'Max kestus (min)' : 'Max kordused'}
+              <input
+                id="sessionTargetMax"
+                type="number"
+                inputMode="numeric"
+                min="1"
+                value={weightEditTarget.targetRepsMax}
+                onChange={(event) =>
+                  setWeightEditTarget((current) =>
+                    current ? { ...current, targetRepsMax: event.target.value } : current,
+                  )
+                }
+              />
+            </label>
+          ) : null}
+          {!isDurationMode(weightEditTarget.repMode) ? (
+            <label htmlFor="sessionWeight">
+              Raskus (kg)
+              <input
+                id="sessionWeight"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                value={weightEditTarget.currentWeight}
+                onChange={(event) =>
+                  setWeightEditTarget((current) =>
+                    current ? { ...current, currentWeight: event.target.value } : current,
+                  )
+                }
+              />
+            </label>
+          ) : null}
+          <p className="muted note-copy">
+            Muudatus rakendub kohe käimasolevale harjutusele ja salvestatakse ka järgmise korra sihiks.
+          </p>
           <div className="button-row">
             <button type="button" className="secondary-button" onClick={() => setWeightEditTarget(null)}>
               Loobu
@@ -1224,21 +1379,50 @@ export function WorkoutPage() {
               type="button"
               className="primary-button"
               onClick={async () => {
-                const nextWeight = Number(weightEditTarget.value);
-                if (!Number.isFinite(nextWeight) || nextWeight < 0) {
+                const target = (sessionExercises ?? []).find(
+                  (item) => item.id === weightEditTarget.sessionExerciseId,
+                );
+                if (!target) {
                   return;
                 }
 
-                await updateSessionExerciseWeight(
-                  weightEditTarget.sessionExerciseId,
-                  weightEditTarget.exerciseId,
-                  weightEditTarget.previousWeight,
-                  nextWeight,
-                );
+                const parsedTargetSets = Number(weightEditTarget.targetSets);
+                const parsedMin = Number(weightEditTarget.targetRepsMin);
+                const parsedMax =
+                  weightEditTarget.repMode === 'range' || weightEditTarget.repMode === 'duration-range'
+                    ? Number(weightEditTarget.targetRepsMax)
+                    : parsedMin;
+                const parsedWeight = isDurationMode(weightEditTarget.repMode)
+                  ? 0
+                  : Number(weightEditTarget.currentWeight);
+                const completedSetCount = nextExerciseResults.length;
+
+                if (
+                  !Number.isFinite(parsedTargetSets) ||
+                  !Number.isFinite(parsedMin) ||
+                  !Number.isFinite(parsedMax) ||
+                  !Number.isFinite(parsedWeight) ||
+                  parsedTargetSets < Math.max(completedSetCount, 1) ||
+                  parsedMin < 1 ||
+                  parsedMax < parsedMin ||
+                  parsedWeight < 0
+                ) {
+                  return;
+                }
+
+                await updateSessionExerciseTarget({
+                  sessionExercise: target,
+                  exerciseId: weightEditTarget.exerciseId,
+                  targetSets: parsedTargetSets,
+                  repMode: weightEditTarget.repMode,
+                  targetRepsMin: parsedMin,
+                  targetRepsMax: parsedMax,
+                  currentWeight: parsedWeight,
+                });
                 setWeightEditTarget(null);
               }}
             >
-              Salvesta raskus
+              Salvesta siht
             </button>
           </div>
         </div>
