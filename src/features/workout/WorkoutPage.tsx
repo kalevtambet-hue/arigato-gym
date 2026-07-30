@@ -22,8 +22,55 @@ type DayExerciseView = DayExerciseRecord & {
   exercise?: ExerciseRecord;
 };
 
+const REST_TIMER_STORAGE_KEY = 'treeninguabiline-rest-timer';
+
+type PersistedRestTimer = {
+  workoutSessionId: string;
+  sessionExerciseId: string;
+  endsAt: number;
+};
+
 function nowIso() {
   return new Date().toISOString();
+}
+
+function readPersistedRestTimer() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const rawValue = window.localStorage.getItem(REST_TIMER_STORAGE_KEY);
+  if (!rawValue) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<PersistedRestTimer>;
+    if (
+      typeof parsed.workoutSessionId !== 'string' ||
+      typeof parsed.sessionExerciseId !== 'string' ||
+      typeof parsed.endsAt !== 'number'
+    ) {
+      return null;
+    }
+
+    return parsed as PersistedRestTimer;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedRestTimer(timer: PersistedRestTimer | null) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (!timer) {
+    window.localStorage.removeItem(REST_TIMER_STORAGE_KEY);
+    return;
+  }
+
+  window.localStorage.setItem(REST_TIMER_STORAGE_KEY, JSON.stringify(timer));
 }
 
 function isSuccessfulAttempt(
@@ -533,7 +580,9 @@ export function WorkoutPage() {
     sessionExerciseId: string;
   } | null>(null);
   const [restTimer, setRestTimer] = useState<{
+    workoutSessionId: string;
     sessionExerciseId: string;
+    endsAt: number;
     remainingSeconds: number;
   } | null>(null);
   const [setEditTarget, setSetEditTarget] = useState<{
@@ -684,18 +733,68 @@ export function WorkoutPage() {
   }, [nextExercise?.id]);
 
   useEffect(() => {
+    if (activeSession === undefined) {
+      return;
+    }
+
+    if (!activeSession) {
+      writePersistedRestTimer(null);
+      return;
+    }
+
+    if (restTimer) {
+      return;
+    }
+
+    const persistedTimer = readPersistedRestTimer();
+    if (!persistedTimer || persistedTimer.workoutSessionId !== activeSession.id) {
+      return;
+    }
+
+    const remainingSeconds = Math.max(Math.ceil((persistedTimer.endsAt - Date.now()) / 1000), 0);
+    if (remainingSeconds <= 0) {
+      writePersistedRestTimer(null);
+      return;
+    }
+
+    setRestTimer({
+      ...persistedTimer,
+      remainingSeconds,
+    });
+  }, [activeSession, restTimer]);
+
+  useEffect(() => {
+    if (!restTimer) {
+      return;
+    }
+
+    writePersistedRestTimer({
+      workoutSessionId: restTimer.workoutSessionId,
+      sessionExerciseId: restTimer.sessionExerciseId,
+      endsAt: restTimer.endsAt,
+    });
+  }, [restTimer]);
+
+  useEffect(() => {
     if (!restTimer || restTimer.remainingSeconds <= 0) {
       return;
     }
 
     const handle = window.setInterval(() => {
       setRestTimer((current) => {
-        if (!current || current.remainingSeconds <= 1) {
+        if (!current) {
           return null;
         }
+
+        const remainingSeconds = Math.max(Math.ceil((current.endsAt - Date.now()) / 1000), 0);
+        if (remainingSeconds <= 0) {
+          writePersistedRestTimer(null);
+          return null;
+        }
+
         return {
           ...current,
-          remainingSeconds: current.remainingSeconds - 1,
+          remainingSeconds,
         };
       });
     }, 1000);
@@ -716,7 +815,9 @@ export function WorkoutPage() {
     setRestTimer(
       restSeconds > 0
         ? {
+            workoutSessionId: sessionExercise.workoutSessionId,
             sessionExerciseId: sessionExercise.id,
+            endsAt: Date.now() + restSeconds * 1000,
             remainingSeconds: restSeconds,
           }
         : null,
@@ -878,7 +979,10 @@ export function WorkoutPage() {
                 <button
                   type="button"
                   className="secondary-button"
-                  onClick={() => setRestTimer(null)}
+                  onClick={() => {
+                    writePersistedRestTimer(null);
+                    setRestTimer(null);
+                  }}
                 >
                   Jätan vahele
                 </button>
@@ -892,6 +996,7 @@ export function WorkoutPage() {
                   onClick={async () => {
                     await undoSetResult(lastSavedSet.id);
                     setLastSavedSet(null);
+                    writePersistedRestTimer(null);
                     setRestTimer(null);
                   }}
                 >

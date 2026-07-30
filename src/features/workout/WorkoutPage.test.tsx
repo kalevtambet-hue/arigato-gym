@@ -11,6 +11,7 @@ function nowIso() {
 
 describe('WorkoutPage', () => {
   beforeEach(async () => {
+    window.localStorage.clear();
     await db.transaction(
       'rw',
       [db.exerciseEvents, db.setResults, db.sessionExercises, db.sessions, db.dayExercises, db.workoutDays, db.exercises],
@@ -494,6 +495,90 @@ describe('WorkoutPage', () => {
     await waitFor(() => {
       expect(screen.queryByText('Puhkus')).not.toBeInTheDocument();
     });
+  });
+
+  it('restores the rest timer after leaving and returning to the workout page', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const exerciseId = createId('exercise');
+    const dayExerciseId = createId('day-exercise');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.exercises.add({
+      id: exerciseId,
+      name: 'Chest Press',
+      machineNumber: '12',
+      notes: '',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.dayExercises.add({
+      id: dayExerciseId,
+      workoutDayId: dayId,
+      exerciseId,
+      sortOrder: 0,
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      restSeconds: 90,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.add({
+      id: sessionExerciseId,
+      workoutSessionId: sessionId,
+      dayExerciseId,
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+
+    const firstRender = render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+
+    expect(await screen.findByText('Puhkus')).toBeInTheDocument();
+    expect(screen.getByText('1:30')).toBeInTheDocument();
+
+    firstRender.unmount();
+    render(<WorkoutPage />);
+
+    expect(await screen.findByText('Puhkus')).toBeInTheDocument();
+    expect(screen.getByText('1:30')).toBeInTheDocument();
   });
 
   it('uses mobile-friendly numeric keyboards for failed reps and target editing', async () => {
