@@ -1567,6 +1567,86 @@ describe('WorkoutPage', () => {
     expect((await db.setResults.get(`${sessionExerciseId}-1`))?.usedWeight).toBe(45);
   });
 
+  it('opens the target editor inside the active workout card and saves rest time for the next set', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const dayExerciseId = createId('day-exercise');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.dayExercises.add({
+      id: dayExerciseId,
+      workoutDayId: dayId,
+      exerciseId: createId('exercise'),
+      sortOrder: 0,
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 50,
+      weightStep: 5,
+      restSeconds: 90,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.add({
+      id: sessionExerciseId,
+      workoutSessionId: sessionId,
+      dayExerciseId,
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 50,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    const workoutCard = await screen.findByTestId('active-workout-card');
+    await user.click(within(workoutCard).getByRole('button', { name: /^Muuda sihti$/i }));
+
+    expect(within(workoutCard).getByRole('heading', { name: 'Muuda sihti' })).toBeInTheDocument();
+    expect(within(workoutCard).getByLabelText('Puhkeaeg seeriate vahel (sek)')).toHaveValue(90);
+
+    await user.clear(within(workoutCard).getByLabelText('Puhkeaeg seeriate vahel (sek)'));
+    await user.type(within(workoutCard).getByLabelText('Puhkeaeg seeriate vahel (sek)'), '120');
+    await user.click(within(workoutCard).getByRole('button', { name: 'Salvesta siht' }));
+
+    await waitFor(async () => {
+      expect((await db.dayExercises.get(dayExerciseId))?.restSeconds).toBe(120);
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    expect(await screen.findByText('2:00')).toBeInTheDocument();
+  });
+
   it('uses the final session weight as the next base weight when progression does not advance', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');

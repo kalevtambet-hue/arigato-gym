@@ -296,6 +296,7 @@ async function updateSessionExerciseTarget(params: {
   targetRepsMin: number;
   targetRepsMax: number;
   currentWeight: number;
+  restSeconds: number;
 }) {
   const {
     sessionExercise,
@@ -305,6 +306,7 @@ async function updateSessionExerciseTarget(params: {
     targetRepsMin,
     targetRepsMax,
     currentWeight,
+    restSeconds,
   } = params;
 
   const dayExercise = await db.dayExercises.get(sessionExercise.dayExerciseId);
@@ -325,6 +327,7 @@ async function updateSessionExerciseTarget(params: {
         targetRepsMin,
         targetRepsMax,
         currentWeight,
+        restSeconds,
         updatedAt: nowIso(),
       });
     }
@@ -564,6 +567,7 @@ export function WorkoutPage() {
     targetRepsMin: string;
     targetRepsMax: string;
     currentWeight: string;
+    restSeconds: string;
   } | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [notesOpenExerciseId, setNotesOpenExerciseId] = useState<string | null>(null);
@@ -833,6 +837,7 @@ export function WorkoutPage() {
       targetRepsMin: String(sessionExercise.targetRepsMin),
       targetRepsMax: String(sessionExercise.targetRepsMax),
       currentWeight: String(sessionExercise.currentWeight),
+      restSeconds: String(dayExerciseMap.get(sessionExercise.dayExerciseId)?.restSeconds ?? 60),
     });
   }
 
@@ -1021,6 +1026,178 @@ export function WorkoutPage() {
                 </button>
               ) : null}
             </div>
+            {weightEditTarget?.sessionExerciseId === nextExercise.id ? (
+              <div className="inline-target-editor">
+                <h4>Muuda sihti</h4>
+                <label htmlFor="sessionTargetSets">
+                  Seeriate arv
+                  <input
+                    id="sessionTargetSets"
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    value={weightEditTarget.targetSets}
+                    onChange={(event) =>
+                      setWeightEditTarget((current) =>
+                        current ? { ...current, targetSets: event.target.value } : current,
+                      )
+                    }
+                  />
+                </label>
+                <label htmlFor="sessionRepMode">
+                  Tüüp
+                  <select
+                    id="sessionRepMode"
+                    value={weightEditTarget.repMode}
+                    onChange={(event) =>
+                      setWeightEditTarget((current) =>
+                        current ? { ...current, repMode: event.target.value as RepMode } : current,
+                      )
+                    }
+                  >
+                    <option value="range">Korduste vahemik + raskus</option>
+                    <option value="fixed">Fikseeritud kordused + raskus</option>
+                    <option value="duration-range">Ajavahemik</option>
+                    <option value="duration-fixed">Fikseeritud aeg</option>
+                  </select>
+                </label>
+                <label htmlFor="sessionTargetMin">
+                  {weightEditTarget.repMode === 'fixed' || weightEditTarget.repMode === 'duration-fixed'
+                    ? weightEditTarget.repMode === 'duration-fixed'
+                      ? 'Kestus (min)'
+                      : 'Kordused'
+                    : weightEditTarget.repMode === 'duration-range'
+                      ? 'Min kestus (min)'
+                      : 'Min kordused'}
+                  <input
+                    id="sessionTargetMin"
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    value={weightEditTarget.targetRepsMin}
+                    onChange={(event) =>
+                      setWeightEditTarget((current) =>
+                        current ? { ...current, targetRepsMin: event.target.value } : current,
+                      )
+                    }
+                  />
+                </label>
+                {weightEditTarget.repMode === 'range' || weightEditTarget.repMode === 'duration-range' ? (
+                  <label htmlFor="sessionTargetMax">
+                    {weightEditTarget.repMode === 'duration-range' ? 'Max kestus (min)' : 'Max kordused'}
+                    <input
+                      id="sessionTargetMax"
+                      type="number"
+                      inputMode="numeric"
+                      min="1"
+                      value={weightEditTarget.targetRepsMax}
+                      onChange={(event) =>
+                        setWeightEditTarget((current) =>
+                          current ? { ...current, targetRepsMax: event.target.value } : current,
+                        )
+                      }
+                    />
+                  </label>
+                ) : null}
+                {!isDurationMode(weightEditTarget.repMode) ? (
+                  <label htmlFor="sessionWeight">
+                    Raskus (kg)
+                    <input
+                      id="sessionWeight"
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      value={weightEditTarget.currentWeight}
+                      onChange={(event) =>
+                        setWeightEditTarget((current) =>
+                          current ? { ...current, currentWeight: event.target.value } : current,
+                        )
+                      }
+                    />
+                  </label>
+                ) : null}
+                <label htmlFor="sessionRestSeconds">
+                  Puhkeaeg seeriate vahel (sek)
+                  <input
+                    id="sessionRestSeconds"
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={weightEditTarget.restSeconds}
+                    onChange={(event) =>
+                      setWeightEditTarget((current) =>
+                        current ? { ...current, restSeconds: event.target.value } : current,
+                      )
+                    }
+                  />
+                </label>
+                <p className="muted note-copy">
+                  Muudatus rakendub kohe käimasolevale harjutusele ja salvestatakse ka järgmise korra sihiks.
+                </p>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setWeightEditTarget(null)}
+                  >
+                    Loobu
+                  </button>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={async () => {
+                      const target = (sessionExercises ?? []).find(
+                        (item) => item.id === weightEditTarget.sessionExerciseId,
+                      );
+                      if (!target) {
+                        return;
+                      }
+
+                      const parsedTargetSets = Number(weightEditTarget.targetSets);
+                      const parsedMin = Number(weightEditTarget.targetRepsMin);
+                      const parsedMax =
+                        weightEditTarget.repMode === 'range' || weightEditTarget.repMode === 'duration-range'
+                          ? Number(weightEditTarget.targetRepsMax)
+                          : parsedMin;
+                      const parsedWeight = isDurationMode(weightEditTarget.repMode)
+                        ? 0
+                        : Number(weightEditTarget.currentWeight);
+                      const parsedRestSeconds = Number(weightEditTarget.restSeconds);
+                      const completedSetCount = nextExerciseResults.length;
+
+                      if (
+                        !Number.isFinite(parsedTargetSets) ||
+                        !Number.isFinite(parsedMin) ||
+                        !Number.isFinite(parsedMax) ||
+                        !Number.isFinite(parsedWeight) ||
+                        !Number.isFinite(parsedRestSeconds) ||
+                        parsedTargetSets < Math.max(completedSetCount, 1) ||
+                        parsedMin < 1 ||
+                        parsedMax < parsedMin ||
+                        parsedWeight < 0 ||
+                        parsedRestSeconds < 0
+                      ) {
+                        return;
+                      }
+
+                      await updateSessionExerciseTarget({
+                        sessionExercise: target,
+                        exerciseId: weightEditTarget.exerciseId,
+                        targetSets: parsedTargetSets,
+                        repMode: weightEditTarget.repMode,
+                        targetRepsMin: parsedMin,
+                        targetRepsMax: parsedMax,
+                        currentWeight: parsedWeight,
+                        restSeconds: parsedRestSeconds,
+                      });
+                      setWeightEditTarget(null);
+                    }}
+                  >
+                    Salvesta siht
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {setEditTarget?.sessionExerciseId === nextExercise.id ? (
               <div className="inline-set-editor">
                 <h4>{`Muuda seeriat ${setEditTarget.setNumber}`}</h4>
@@ -1387,155 +1564,6 @@ export function WorkoutPage() {
         </div>
       ) : null}
 
-      {weightEditTarget ? (
-        <div className="modal-card">
-          <h3>Muuda sihti</h3>
-          <label htmlFor="sessionTargetSets">
-            Seeriate arv
-            <input
-              id="sessionTargetSets"
-              type="number"
-              inputMode="numeric"
-              min="1"
-              value={weightEditTarget.targetSets}
-              onChange={(event) =>
-                setWeightEditTarget((current) =>
-                  current ? { ...current, targetSets: event.target.value } : current,
-                )
-              }
-            />
-          </label>
-          <label htmlFor="sessionRepMode">
-            Tüüp
-            <select
-              id="sessionRepMode"
-              value={weightEditTarget.repMode}
-              onChange={(event) =>
-                setWeightEditTarget((current) =>
-                  current ? { ...current, repMode: event.target.value as RepMode } : current,
-                )
-              }
-            >
-              <option value="range">Korduste vahemik + raskus</option>
-              <option value="fixed">Fikseeritud kordused + raskus</option>
-              <option value="duration-range">Ajavahemik</option>
-              <option value="duration-fixed">Fikseeritud aeg</option>
-            </select>
-          </label>
-          <label htmlFor="sessionTargetMin">
-            {weightEditTarget.repMode === 'fixed' || weightEditTarget.repMode === 'duration-fixed'
-              ? weightEditTarget.repMode === 'duration-fixed'
-                ? 'Kestus (min)'
-                : 'Kordused'
-              : weightEditTarget.repMode === 'duration-range'
-                ? 'Min kestus (min)'
-                : 'Min kordused'}
-            <input
-              id="sessionTargetMin"
-              type="number"
-              inputMode="numeric"
-              min="1"
-              value={weightEditTarget.targetRepsMin}
-              onChange={(event) =>
-                setWeightEditTarget((current) =>
-                  current ? { ...current, targetRepsMin: event.target.value } : current,
-                )
-              }
-            />
-          </label>
-          {weightEditTarget.repMode === 'range' || weightEditTarget.repMode === 'duration-range' ? (
-            <label htmlFor="sessionTargetMax">
-              {weightEditTarget.repMode === 'duration-range' ? 'Max kestus (min)' : 'Max kordused'}
-              <input
-                id="sessionTargetMax"
-                type="number"
-                inputMode="numeric"
-                min="1"
-                value={weightEditTarget.targetRepsMax}
-                onChange={(event) =>
-                  setWeightEditTarget((current) =>
-                    current ? { ...current, targetRepsMax: event.target.value } : current,
-                  )
-                }
-              />
-            </label>
-          ) : null}
-          {!isDurationMode(weightEditTarget.repMode) ? (
-            <label htmlFor="sessionWeight">
-              Raskus (kg)
-              <input
-                id="sessionWeight"
-                type="number"
-                inputMode="decimal"
-                min="0"
-                value={weightEditTarget.currentWeight}
-                onChange={(event) =>
-                  setWeightEditTarget((current) =>
-                    current ? { ...current, currentWeight: event.target.value } : current,
-                  )
-                }
-              />
-            </label>
-          ) : null}
-          <p className="muted note-copy">
-            Muudatus rakendub kohe käimasolevale harjutusele ja salvestatakse ka järgmise korra sihiks.
-          </p>
-          <div className="button-row">
-            <button type="button" className="secondary-button" onClick={() => setWeightEditTarget(null)}>
-              Loobu
-            </button>
-            <button
-              type="button"
-              className="primary-button"
-              onClick={async () => {
-                const target = (sessionExercises ?? []).find(
-                  (item) => item.id === weightEditTarget.sessionExerciseId,
-                );
-                if (!target) {
-                  return;
-                }
-
-                const parsedTargetSets = Number(weightEditTarget.targetSets);
-                const parsedMin = Number(weightEditTarget.targetRepsMin);
-                const parsedMax =
-                  weightEditTarget.repMode === 'range' || weightEditTarget.repMode === 'duration-range'
-                    ? Number(weightEditTarget.targetRepsMax)
-                    : parsedMin;
-                const parsedWeight = isDurationMode(weightEditTarget.repMode)
-                  ? 0
-                  : Number(weightEditTarget.currentWeight);
-                const completedSetCount = nextExerciseResults.length;
-
-                if (
-                  !Number.isFinite(parsedTargetSets) ||
-                  !Number.isFinite(parsedMin) ||
-                  !Number.isFinite(parsedMax) ||
-                  !Number.isFinite(parsedWeight) ||
-                  parsedTargetSets < Math.max(completedSetCount, 1) ||
-                  parsedMin < 1 ||
-                  parsedMax < parsedMin ||
-                  parsedWeight < 0
-                ) {
-                  return;
-                }
-
-                await updateSessionExerciseTarget({
-                  sessionExercise: target,
-                  exerciseId: weightEditTarget.exerciseId,
-                  targetSets: parsedTargetSets,
-                  repMode: weightEditTarget.repMode,
-                  targetRepsMin: parsedMin,
-                  targetRepsMax: parsedMax,
-                  currentWeight: parsedWeight,
-                });
-                setWeightEditTarget(null);
-              }}
-            >
-              Salvesta siht
-            </button>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }

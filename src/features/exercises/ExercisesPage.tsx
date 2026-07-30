@@ -72,7 +72,7 @@ async function addDayExercise(workoutDayId: string, exerciseId: string) {
     targetRepsMax: 15,
     currentWeight: 40,
     weightStep: 5,
-    restSeconds: 90,
+    restSeconds: 60,
     createdAt: timestamp,
     updatedAt: timestamp,
   });
