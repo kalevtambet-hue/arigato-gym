@@ -824,6 +824,18 @@ export function WorkoutPage() {
     );
   }
 
+  function openTargetEditor(sessionExercise: WorkoutSessionExerciseRecord, exerciseId: string) {
+    setWeightEditTarget({
+      sessionExerciseId: sessionExercise.id,
+      exerciseId,
+      targetSets: String(sessionExercise.targetSets),
+      repMode: sessionExercise.repMode,
+      targetRepsMin: String(sessionExercise.targetRepsMin),
+      targetRepsMax: String(sessionExercise.targetRepsMax),
+      currentWeight: String(sessionExercise.currentWeight),
+    });
+  }
+
   return (
     <section className="page">
       <div className="section-header">
@@ -910,22 +922,7 @@ export function WorkoutPage() {
             <p className="eyebrow">Järgmine harjutus</p>
             <h3>{nextExercise.exerciseName}</h3>
             {!isDurationMode(nextExercise.repMode) ? (
-              <button
-                type="button"
-                className="target-pill-button"
-                aria-label={`Muuda sihti ${nextExercise.exerciseName}`}
-                onClick={() =>
-                  setWeightEditTarget({
-                    sessionExerciseId: nextExercise.id,
-                    exerciseId: nextExerciseBaseId ?? '',
-                    targetSets: String(nextExercise.targetSets),
-                    repMode: nextExercise.repMode,
-                    targetRepsMin: String(nextExercise.targetRepsMin),
-                    targetRepsMax: String(nextExercise.targetRepsMax),
-                    currentWeight: String(nextExercise.currentWeight),
-                  })
-                }
-              >
+              <div className="target-pill">
                 Masin #{nextExercise.machineNumber || '-'} · {nextExercise.targetSets} x{' '}
                 {formatTarget(
                   nextExercise.repMode,
@@ -933,7 +930,7 @@ export function WorkoutPage() {
                   nextExercise.targetRepsMax,
                   nextExercise.currentWeight,
                 )}
-              </button>
+              </div>
             ) : (
               <p className="target-copy">
                 Masin #{nextExercise.machineNumber || '-'} · {nextExercise.targetSets} x{' '}
@@ -1005,6 +1002,13 @@ export function WorkoutPage() {
               </div>
             ) : null}
             <div className="utility-button-row">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => openTargetEditor(nextExercise, nextExerciseBaseId ?? '')}
+              >
+                Muuda sihti
+              </button>
               {nextExerciseBaseId ? (
                 <button
                   type="button"

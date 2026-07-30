@@ -656,9 +656,56 @@ describe('WorkoutPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Ei tulnud täis' }));
     expect(screen.getByLabelText('Tegelikud kordused')).toHaveAttribute('inputmode', 'numeric');
 
-    await user.click(screen.getByRole('button', { name: /Muuda sihti Chest Press/i }));
+    await user.click(screen.getByRole('button', { name: /^Muuda sihti$/i }));
     expect(screen.getByLabelText('Raskus (kg)')).toHaveAttribute('inputmode', 'decimal');
     expect(screen.getByLabelText('Seeriate arv')).toHaveAttribute('inputmode', 'numeric');
+  });
+
+  it('shows a dedicated visible target edit button inside the active exercise card', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.sessionExercises.add({
+      id: sessionExerciseId,
+      workoutSessionId: sessionId,
+      dayExerciseId: createId('day-exercise'),
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+
+    render(<WorkoutPage />);
+
+    const workoutCard = await screen.findByTestId('active-workout-card');
+    expect(within(workoutCard).getByRole('button', { name: 'Muuda sihti' })).toBeInTheDocument();
   });
 
   it('shows exercise notes history and lets the user add a note', async () => {
@@ -829,7 +876,7 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: /Muuda sihti Chest Press/i }));
+    await user.click(await screen.findByRole('button', { name: /^Muuda sihti$/i }));
     await user.clear(screen.getByLabelText('Seeriate arv'));
     await user.type(screen.getByLabelText('Seeriate arv'), '4');
     await user.clear(screen.getByLabelText('Min kordused'));
@@ -931,9 +978,14 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByTestId('set-dot-1'));
-    const editor = await screen.findByText('Muuda seeriat 1');
-    const editorCard = editor.closest('.inline-set-editor') as HTMLElement | null;
+    let editor: HTMLElement | null = null;
+    await waitFor(async () => {
+      fireEvent.click(await screen.findByTestId('set-dot-1'));
+      editor = screen.getByText('Muuda seeriat 1');
+      expect(editor).toBeInTheDocument();
+    });
+    expect(editor).toBeTruthy();
+    const editorCard = editor!.closest('.inline-set-editor') as HTMLElement | null;
     expect(editorCard).toBeTruthy();
     await user.click(within(editorCard!).getByRole('button', { name: 'Ei tulnud täis' }));
     await user.clear(within(editorCard!).getByLabelText('Tegelikud kordused'));
@@ -999,9 +1051,14 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByTestId('set-dot-1'));
-    const editor = await screen.findByText('Muuda seeriat 1');
-    const editorCard = editor.closest('.inline-set-editor') as HTMLElement | null;
+    let editor: HTMLElement | null = null;
+    await waitFor(async () => {
+      fireEvent.click(await screen.findByTestId('set-dot-1'));
+      editor = screen.getByText('Muuda seeriat 1');
+      expect(editor).toBeInTheDocument();
+    });
+    expect(editor).toBeTruthy();
+    const editorCard = editor!.closest('.inline-set-editor') as HTMLElement | null;
     expect(editorCard).toBeTruthy();
     await user.click(within(editorCard!).getByRole('button', { name: 'Kustuta seeria' }));
 
@@ -1501,7 +1558,7 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: /Muuda sihti Chest Press/i }));
+    await user.click(await screen.findByRole('button', { name: /^Muuda sihti$/i }));
     await user.clear(screen.getByLabelText('Raskus (kg)'));
     await user.type(screen.getByLabelText('Raskus (kg)'), '45');
     await user.click(screen.getByRole('button', { name: 'Salvesta siht' }));
@@ -1572,7 +1629,7 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: /Muuda sihti Chest Press/i }));
+    await user.click(await screen.findByRole('button', { name: /^Muuda sihti$/i }));
     await user.clear(screen.getByLabelText('Raskus (kg)'));
     await user.type(screen.getByLabelText('Raskus (kg)'), '45');
     await user.click(screen.getByRole('button', { name: 'Salvesta siht' }));
@@ -1710,7 +1767,7 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: /Muuda sihti Chest Press/i }));
+    await user.click(await screen.findByRole('button', { name: /^Muuda sihti$/i }));
     await user.clear(screen.getByLabelText('Raskus (kg)'));
     await user.type(screen.getByLabelText('Raskus (kg)'), '45');
     await user.click(screen.getByRole('button', { name: 'Salvesta siht' }));
