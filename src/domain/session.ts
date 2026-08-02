@@ -22,6 +22,8 @@ export function buildSessionExercises(
       targetRepsMax: item.targetRepsMax,
       currentWeight: item.currentWeight,
       weightStep: item.weightStep,
+      primaryTargetGroup: item.primaryTargetGroup ?? '',
+      secondaryTargetGroups: item.secondaryTargetGroups ?? [],
       orderIndex: index,
       performedOrder: null,
     }));

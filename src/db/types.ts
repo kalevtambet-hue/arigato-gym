@@ -7,6 +7,8 @@ export type ExerciseRecord = {
   name: string;
   machineNumber: string;
   notes: string;
+  primaryTargetGroup?: string;
+  secondaryTargetGroups?: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -61,6 +63,8 @@ export type WorkoutSessionExerciseRecord = {
   targetRepsMax: number;
   currentWeight: number;
   weightStep: number;
+  primaryTargetGroup?: string;
+  secondaryTargetGroups?: string[];
   orderIndex: number;
   performedOrder?: number | null;
 };
@@ -72,6 +76,35 @@ export type SetResultRecord = {
   status: 'success' | 'failed';
   completedReps: number;
   usedWeight: number | null;
+};
+
+export type WorkoutSessionSnapshotRecord = {
+  id: string;
+  workoutSessionId: string;
+  kind: 'started' | 'completed';
+  capturedAt: string;
+  workoutDayId: string;
+  workoutDayName: string;
+  sessionExercises: WorkoutSessionExerciseRecord[];
+};
+
+export type SetResultRevisionRecord = {
+  id: string;
+  setResultId: string;
+  revision: number;
+  recordedAt: string;
+  reason: 'created' | 'updated' | 'deleted';
+  result: SetResultRecord | null;
+};
+
+export type AuditEventRecord = {
+  id: string;
+  occurredAt: string;
+  actor: 'user' | 'automation';
+  entityType: 'exercise' | 'dayExercise' | 'session' | 'setResult';
+  entityId: string;
+  action: string;
+  payload: Record<string, unknown>;
 };
 
 export type ExerciseEventField = 'targetSets' | 'targetReps' | 'currentWeight';

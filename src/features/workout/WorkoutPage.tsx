@@ -227,6 +227,8 @@ async function startWorkout(workoutDayId: string) {
     targetRepsMax: item.targetRepsMax,
     currentWeight: item.currentWeight,
     weightStep: item.weightStep,
+    primaryTargetGroup: exercises[index]?.primaryTargetGroup ?? '',
+    secondaryTargetGroups: exercises[index]?.secondaryTargetGroups ?? [],
     sortOrder: item.sortOrder,
   }));
 
