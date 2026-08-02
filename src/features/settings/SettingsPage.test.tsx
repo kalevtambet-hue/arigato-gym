@@ -45,6 +45,14 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Tõrkeotsing')).toBeInTheDocument();
   });
 
+  it('lets the user save a dark theme preference', async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    await user.selectOptions(screen.getByLabelText('Välimus'), 'dark');
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('treeninguabiline-theme')).toBe('dark');
+  });
+
   it('retains partial session status when importing sessions CSV', async () => {
     const user = userEvent.setup();
     render(<SettingsPage />);

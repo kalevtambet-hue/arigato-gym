@@ -1,6 +1,8 @@
 import type { BackupPayload, WorkoutSessionStatus } from '../../db/types';
 import { exportBackup, importBackup } from '../../db/repositories';
+import { useState } from 'react';
 import { parseCsv, toCsv } from './exportCsv';
+import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 
 function parseRepMode(value: unknown) {
   switch (value) {
@@ -36,6 +38,7 @@ function downloadText(filename: string, content: string, type: string) {
 
 export function SettingsPage() {
   const versionLabel = `Versioon ${__APP_VERSION__} (${__APP_BUILD__})`;
+  const [themePreference, setThemePreferenceState] = useState(getThemePreference);
   const helpSections = [
     {
       title: 'Privaatsus',
@@ -209,6 +212,21 @@ export function SettingsPage() {
         </div>
       </div>
       <div className="stack">
+        <article className="panel">
+          <h3>Välimus</h3>
+          <label>
+            Välimus
+            <select value={themePreference} onChange={(event) => {
+              const preference = event.target.value as ThemePreference;
+              setThemePreference(preference);
+              setThemePreferenceState(preference);
+            }}>
+              <option value="system">Süsteemi järgi</option>
+              <option value="light">Hele</option>
+              <option value="dark">Tume</option>
+            </select>
+          </label>
+        </article>
         <article className="panel">
           <h3>Andmed</h3>
           <div className="button-stack">

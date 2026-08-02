@@ -25,6 +25,14 @@ function isHistoryExerciseComplete(item: {
   return results.every((result) => result.completedReps >= item.targetRepsMin);
 }
 
+function isHistoryExerciseFailed(
+  sessionStatus: 'active' | 'completed' | 'partial',
+  isComplete: boolean,
+  results: Array<{ status: 'success' | 'failed'; completedReps: number }>,
+) {
+  return !isComplete && (sessionStatus !== 'partial' || results.some((result) => result.status === 'failed'));
+}
+
 export function HistoryPage() {
   const sessions = useLiveQuery(() => db.sessions.orderBy('performedAt').reverse().toArray(), []);
   const sessionExercises = useLiveQuery(() => db.sessionExercises.toArray(), []);
@@ -68,10 +76,12 @@ export function HistoryPage() {
         )
         .map((item) => {
           const rawResults = resultsByExercise.get(item.id) ?? [];
+          const isComplete = isHistoryExerciseComplete(item, rawResults);
 
           return {
             ...item,
-            isComplete: isHistoryExerciseComplete(item, rawResults),
+            isComplete,
+            isFailed: isHistoryExerciseFailed(session.status, isComplete, rawResults),
             reps: rawResults
               .map((value) => formatResultValue(item.repMode, value.completedReps))
               .join(' / '),
@@ -106,13 +116,13 @@ export function HistoryPage() {
           <details key={session.id} className="panel history-session" data-testid={`history-session-${session.id}`}>
             <summary className="history-summary">
               <strong>{new Date(session.performedAt).toLocaleDateString('et-EE')}</strong>
-              <span>{`${completedExercises}/${exercises.length} edukat`}</span>
+              <span>{session.status === 'partial' ? 'Pooleli lõpetatud' : `${completedExercises}/${exercises.length} edukat`}</span>
             </summary>
             <ul className="stack-list">
               {exercises.map((item) => (
                 <li
                   key={item.id}
-                  className={item.isComplete ? 'list-card' : 'list-card history-item-failed'}
+                  className={item.isFailed ? 'list-card history-item-failed' : 'list-card'}
                   data-testid={`history-exercise-${item.id}`}
                 >
                   <strong>{item.exerciseName}</strong>
