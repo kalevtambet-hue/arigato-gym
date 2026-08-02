@@ -21,6 +21,7 @@ describe('buildSessionExercises', () => {
     ]);
 
     expect(snapshots[0].dayExerciseId).toBe('de1');
+    expect(snapshots[0].exerciseId).toBe('e1');
     expect(snapshots[0].exerciseName).toBe('Chest Press');
     expect(snapshots[0].workoutSessionId).toBe('session-1');
     expect(snapshots[0].successesRequired).toBe(2);

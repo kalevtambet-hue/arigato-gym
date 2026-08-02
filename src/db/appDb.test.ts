@@ -18,8 +18,8 @@ afterEach(async () => {
   await db.delete();
 });
 
-describe('AppDb v7 migration', () => {
-  it('adds target-group defaults and the progression audit tables to v6 data', async () => {
+describe('AppDb migrations', () => {
+  it('adds progression defaults and backfills exercise identity when upgrading v6 data', async () => {
     db.close();
     await db.delete();
 
@@ -50,6 +50,10 @@ describe('AppDb v7 migration', () => {
       orderIndex: 0,
       performedOrder: null,
     });
+    await legacy.table('dayExercises').add({
+      id: 'day-exercise-1',
+      exerciseId: 'exercise-1',
+    });
     legacy.close();
 
     await db.open();
@@ -59,6 +63,7 @@ describe('AppDb v7 migration', () => {
       secondaryTargetGroups: [],
     });
     expect(await db.sessionExercises.get('session-exercise-1')).toMatchObject({
+      exerciseId: 'exercise-1',
       primaryTargetGroup: '',
       secondaryTargetGroups: [],
     });

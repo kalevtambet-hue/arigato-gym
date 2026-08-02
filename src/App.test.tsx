@@ -18,7 +18,19 @@ describe('App shell', () => {
     expect(screen.getByRole('link', { name: 'Treening' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Kavad' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ajalugu' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Seaded' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Rohkem' })).toBeInTheDocument();
+  });
+
+  it('routes More to accessible links for exercises and settings', async () => {
+    render(
+      <MemoryRouter initialEntries={['/rohkem']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Rohkem' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Harjutused/i })).toHaveAttribute('href', '/harjutused');
+    expect(screen.getByRole('link', { name: /Seaded/i })).toHaveAttribute('href', '/seaded');
   });
 
   it('routes the root path to Treening by default', async () => {

@@ -12,6 +12,7 @@ export function buildSessionExercises(
       id: createId('session-exercise'),
       workoutSessionId,
       dayExerciseId: item.id,
+      exerciseId: item.exerciseId,
       exerciseName: item.exerciseName,
       machineNumber: item.machineNumber,
       targetSets: item.targetSets,

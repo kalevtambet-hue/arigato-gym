@@ -6,7 +6,7 @@ const items = [
   { to: '/treening', label: 'Treening' },
   { to: '/kavad', label: 'Kavad' },
   { to: '/ajalugu', label: 'Ajalugu' },
-  { to: '/seaded', label: 'Seaded' },
+  { to: '/rohkem', label: 'Rohkem' },
 ];
 
 export function BottomNav() {

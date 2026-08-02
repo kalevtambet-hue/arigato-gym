@@ -140,6 +140,33 @@ export class AppDb extends Dexie {
           row.secondaryTargetGroups ??= [];
         });
       });
+    this.version(8)
+      .stores({
+        exercises: 'id, name, machineNumber, primaryTargetGroup, updatedAt',
+        workoutDays: 'id, sortOrder, isArchived, updatedAt',
+        dayExercises: 'id, workoutDayId, exerciseId, sortOrder, updatedAt',
+        sessions: 'id, workoutDayId, status, performedAt',
+        sessionExercises: 'id, workoutSessionId, dayExerciseId, exerciseId, primaryTargetGroup, orderIndex, performedOrder',
+        setResults: 'id, workoutSessionExerciseId, setNumber',
+        exerciseEvents: 'id, exerciseId, createdAt, type, actor',
+        sessionSnapshots: 'id, workoutSessionId, kind, capturedAt',
+        setResultRevisions: 'id, setResultId, revision, recordedAt',
+        auditEvents: 'id, entityType, entityId, occurredAt, actor',
+      })
+      .upgrade(async (tx) => {
+        await tx.table('exercises').toCollection().modify((row) => {
+          row.primaryTargetGroup ??= '';
+          row.secondaryTargetGroups ??= [];
+        });
+        const exerciseIdByDayExerciseId = new Map(
+          (await tx.table('dayExercises').toArray()).map((row) => [row.id, row.exerciseId]),
+        );
+        await tx.table('sessionExercises').toCollection().modify((row) => {
+          row.primaryTargetGroup ??= '';
+          row.secondaryTargetGroups ??= [];
+          row.exerciseId ??= exerciseIdByDayExerciseId.get(row.dayExerciseId) ?? null;
+        });
+      });
   }
 }
 

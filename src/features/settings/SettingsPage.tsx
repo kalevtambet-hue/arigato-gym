@@ -1,6 +1,8 @@
-import type { BackupPayload } from '../../db/types';
+import type { BackupPayload, WorkoutSessionStatus } from '../../db/types';
 import { exportBackup, importBackup } from '../../db/repositories';
+import { useState } from 'react';
 import { parseCsv, toCsv } from './exportCsv';
+import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 
 function parseRepMode(value: unknown) {
   switch (value) {
@@ -10,6 +12,17 @@ function parseRepMode(value: unknown) {
       return value;
     default:
       return 'range';
+  }
+}
+
+function parseSessionStatus(value: unknown): WorkoutSessionStatus {
+  switch (value) {
+    case 'active':
+    case 'partial':
+    case 'completed':
+      return value;
+    default:
+      return 'completed';
   }
 }
 
@@ -25,6 +38,7 @@ function downloadText(filename: string, content: string, type: string) {
 
 export function SettingsPage() {
   const versionLabel = `Versioon ${__APP_VERSION__} (${__APP_BUILD__})`;
+  const [themePreference, setThemePreferenceState] = useState(getThemePreference);
   const helpSections = [
     {
       title: 'Privaatsus',
@@ -124,7 +138,7 @@ export function SettingsPage() {
             id: String(row.id ?? ''),
             workoutDayId: String(row.workoutDayId ?? ''),
             performedAt: String(row.performedAt ?? ''),
-            status: row.status === 'active' ? 'active' : 'completed',
+            status: parseSessionStatus(row.status),
             createdAt: String(row.createdAt ?? ''),
             updatedAt: String(row.updatedAt ?? ''),
           }));
@@ -134,6 +148,7 @@ export function SettingsPage() {
             id: String(row.id ?? ''),
             workoutSessionId: String(row.workoutSessionId ?? ''),
             dayExerciseId: String(row.dayExerciseId ?? ''),
+            exerciseId: row.exerciseId === undefined || row.exerciseId === '' ? null : String(row.exerciseId),
             exerciseName: String(row.exerciseName ?? ''),
             machineNumber: String(row.machineNumber ?? ''),
             targetSets: Number(row.targetSets ?? 0),
@@ -197,6 +212,21 @@ export function SettingsPage() {
         </div>
       </div>
       <div className="stack">
+        <article className="panel">
+          <h3>Välimus</h3>
+          <label>
+            Välimus
+            <select value={themePreference} onChange={(event) => {
+              const preference = event.target.value as ThemePreference;
+              setThemePreference(preference);
+              setThemePreferenceState(preference);
+            }}>
+              <option value="system">Süsteemi järgi</option>
+              <option value="light">Hele</option>
+              <option value="dark">Tume</option>
+            </select>
+          </label>
+        </article>
         <article className="panel">
           <h3>Andmed</h3>
           <div className="button-stack">

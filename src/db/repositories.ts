@@ -16,6 +16,15 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+export async function completeSessionPartially(sessionId: string) {
+  await db.transaction('rw', db.sessions, async () => {
+    await db.sessions.update(sessionId, {
+      status: 'partial',
+      updatedAt: nowIso(),
+    });
+  });
+}
+
 export function createInMemorySeed() {
   const timestamp = nowIso();
   const workoutDays: WorkoutDayRecord[] = [
@@ -117,6 +126,7 @@ export async function importBackup(payload: BackupPayload) {
       await db.sessionExercises.bulkAdd(
         payload.sessionExercises.map((item) => ({
           ...item,
+          exerciseId: item.exerciseId ?? null,
           successesRequired: item.successesRequired ?? 1,
           performedOrder: item.performedOrder ?? null,
         })),

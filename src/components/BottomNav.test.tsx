@@ -52,4 +52,18 @@ describe('BottomNav', () => {
 
     expect(await screen.findByLabelText('Aktiivne treening')).toBeInTheDocument();
   });
+
+  it('shows exactly the four primary destinations, including More', () => {
+    render(
+      <MemoryRouter initialEntries={['/treening']}>
+        <BottomNav />
+      </MemoryRouter>,
+    );
+
+    const links = screen.getAllByRole('link');
+
+    expect(links).toHaveLength(4);
+    expect(links.map((link) => link.textContent)).toEqual(['Treening', 'Kavad', 'Ajalugu', 'Rohkem']);
+    expect(screen.getByRole('link', { name: 'Rohkem' })).toHaveAttribute('href', '/rohkem');
+  });
 });

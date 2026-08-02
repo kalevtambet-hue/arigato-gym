@@ -124,6 +124,166 @@ describe('WorkoutPage', () => {
     expect(screen.getByText('Jäänud 1')).toBeInTheDocument();
   });
 
+  it('saves the selected range repetitions when Tehtud is pressed', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+    await db.workoutDays.add({ id: dayId, name: 'Päev', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.add({ id: sessionId, workoutDayId: dayId, performedAt: timestamp, status: 'active', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({
+      id: sessionExerciseId, workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseName: 'Leg Press', machineNumber: '7',
+      targetSets: 3, successesRequired: 1, repMode: 'range', targetRepsMin: 8, targetRepsMax: 12, currentWeight: 50, weightStep: 5, orderIndex: 0,
+    });
+
+    const user = userEvent.setup();
+    render(<WorkoutPage />);
+    await user.click(await screen.findByRole('button', { name: 'Vähenda kordusi' }));
+    await user.click(screen.getByRole('button', { name: 'Tehtud' }));
+
+    await waitFor(async () => {
+      const result = await db.setResults.where('workoutSessionExerciseId').equals(sessionExerciseId).first();
+      expect(result?.completedReps).toBe(11);
+    });
+  });
+
+  it('keeps selected repetitions when the active exercise weight changes', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+    await db.workoutDays.add({ id: dayId, name: 'Päev', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.add({ id: sessionId, workoutDayId: dayId, performedAt: timestamp, status: 'active', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({
+      id: sessionExerciseId, workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseName: 'Leg Press', machineNumber: '7',
+      targetSets: 3, successesRequired: 1, repMode: 'range', targetRepsMin: 8, targetRepsMax: 12, currentWeight: 50, weightStep: 5, orderIndex: 0,
+    });
+
+    const user = userEvent.setup();
+    render(<WorkoutPage />);
+    await user.click(await screen.findByRole('button', { name: 'Vähenda kordusi' }));
+    await user.click(screen.getByRole('button', { name: 'Suurenda raskust' }));
+    await waitFor(() => expect(screen.getByText('55 kg')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: 'Tehtud' }));
+
+    await waitFor(async () => {
+      expect((await db.setResults.where('workoutSessionExerciseId').equals(sessionExerciseId).first())?.completedReps).toBe(11);
+    });
+  });
+
+  it('applies rapid weight increases cumulatively and records each applied change once', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const exerciseId = createId('exercise');
+    const dayExerciseId = createId('day-exercise');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+    await db.workoutDays.add({ id: dayId, name: 'Päev', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.exercises.add({ id: exerciseId, name: 'Leg Press', machineNumber: '7', notes: '', createdAt: timestamp, updatedAt: timestamp });
+    await db.dayExercises.add({
+      id: dayExerciseId, workoutDayId: dayId, exerciseId, sortOrder: 0, targetSets: 3, successesRequired: 1,
+      repMode: 'range', targetRepsMin: 8, targetRepsMax: 12, currentWeight: 50, weightStep: 5, restSeconds: 60, createdAt: timestamp, updatedAt: timestamp,
+    });
+    await db.sessions.add({ id: sessionId, workoutDayId: dayId, performedAt: timestamp, status: 'active', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({
+      id: sessionExerciseId, workoutSessionId: sessionId, dayExerciseId, exerciseName: 'Leg Press', machineNumber: '7',
+      targetSets: 3, successesRequired: 1, repMode: 'range', targetRepsMin: 8, targetRepsMax: 12, currentWeight: 50, weightStep: 5, orderIndex: 0,
+    });
+
+    render(<WorkoutPage />);
+    const increment = await screen.findByRole('button', { name: 'Suurenda raskust' });
+    fireEvent.click(increment);
+    fireEvent.click(increment);
+
+    await waitFor(async () => {
+      expect((await db.sessionExercises.get(sessionExerciseId))?.currentWeight).toBe(60);
+    });
+    const weightEvents = (await db.exerciseEvents.toArray()).filter((event) => event.field === 'currentWeight');
+    expect(weightEvents).toHaveLength(2);
+    expect(weightEvents.sort((left, right) => (left.fromValue ?? '').localeCompare(right.fromValue ?? '')).map((event) => [event.fromValue, event.toValue])).toEqual([
+      ['50 kg', '55 kg'],
+      ['55 kg', '60 kg'],
+    ]);
+  });
+
+  it('allows partial completion when duplicate set numbers leave a planned set missing', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await db.sessionExercises.add({
+      id: sessionExerciseId,
+      workoutSessionId: sessionId,
+      dayExerciseId: createId('day-exercise'),
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+    await db.setResults.bulkAdd([
+      {
+        id: `${sessionExerciseId}-1`,
+        workoutSessionExerciseId: sessionExerciseId,
+        setNumber: 1,
+        status: 'success',
+        completedReps: 15,
+        usedWeight: 60,
+      },
+      {
+        id: `${sessionExerciseId}-duplicate-1`,
+        workoutSessionExerciseId: sessionExerciseId,
+        setNumber: 1,
+        status: 'success',
+        completedReps: 15,
+        usedWeight: 60,
+      },
+      {
+        id: `${sessionExerciseId}-2`,
+        workoutSessionExerciseId: sessionExerciseId,
+        setNumber: 2,
+        status: 'success',
+        completedReps: 15,
+        usedWeight: 60,
+      },
+    ]);
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('Tehtud 1 / 1')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Lõpeta treening' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Lõpeta poolikuna' }));
+
+    await waitFor(async () => {
+      expect((await db.sessions.get(sessionId))?.status).toBe('partial');
+      expect(await db.setResults.count()).toBe(3);
+    });
+  });
+
   it('shows the selected day note and exercise preview before starting a workout', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');
@@ -184,7 +344,7 @@ describe('WorkoutPage', () => {
     expect(screen.queryByRole('button', { name: 'Alusta treeningut' })).not.toBeInTheDocument();
   });
 
-  it('renders duration targets without reps or weight', async () => {
+  it('selects and saves a duration-range value while hiding weight controls', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');
     const sessionId = createId('session');
@@ -225,11 +385,17 @@ describe('WorkoutPage', () => {
       orderIndex: 0,
     });
 
+    const user = userEvent.setup();
     render(<WorkoutPage />);
 
     expect(await screen.findByText((content) => content.includes('1') && content.includes('10-15 min'))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Tehtud' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Muuda raskust' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Vähenda kestust' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Vähenda raskust' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Vähenda kestust' }));
+    await user.click(screen.getByRole('button', { name: 'Tehtud' }));
+    await waitFor(async () => {
+      expect((await db.setResults.where('workoutSessionExerciseId').equals(sessionExerciseId).first())?.completedReps).toBe(14);
+    });
   });
 
   it('shows failed set input inline inside the active workout card', async () => {
@@ -346,6 +512,11 @@ describe('WorkoutPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('set-dot-2')).toHaveClass('set-dot-failed');
     });
+    expect(
+      (await db.setResults.where('workoutSessionExerciseId').equals(sessionExerciseId).toArray()).find(
+        (result) => result.setNumber === 2,
+      )?.completedReps,
+    ).toBe(8);
     expect(screen.getByTestId('set-dot-3')).toHaveClass('set-dot-pending');
   });
 
@@ -399,7 +570,7 @@ describe('WorkoutPage', () => {
       .map((button) => button.textContent?.trim())
       .filter(Boolean);
 
-    expect(actionButtons.slice(0, 2)).toEqual(['Tehtud', 'Ei tulnud täis']);
+    expect(actionButtons.slice(0, 2)).toEqual(['Ei tulnud täis', 'Tehtud']);
 
     await user.click(screen.getByRole('button', { name: 'Tehtud' }));
 
@@ -497,7 +668,9 @@ describe('WorkoutPage', () => {
     });
   });
 
-  it('restores the rest timer after leaving and returning to the workout page', async () => {
+  it('restores the same next exercise and an elapsed-time-adjusted rest timer after remounting', async () => {
+    const startedAt = new Date('2026-07-13T10:00:00.000Z').valueOf();
+    const now = vi.spyOn(Date, 'now').mockReturnValue(startedAt);
     const timestamp = nowIso();
     const dayId = createId('day');
     const exerciseId = createId('exercise');
@@ -573,12 +746,16 @@ describe('WorkoutPage', () => {
 
     expect(await screen.findByText('Puhkus')).toBeInTheDocument();
     expect(screen.getByText('1:30')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Chest Press' })).toBeInTheDocument();
+
+    now.mockReturnValue(startedAt + 10_000);
 
     firstRender.unmount();
     render(<WorkoutPage />);
 
     expect(await screen.findByText('Puhkus')).toBeInTheDocument();
-    expect(screen.getByText('1:30')).toBeInTheDocument();
+    expect(screen.getByText('1:20')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Chest Press' })).toBeInTheDocument();
   });
 
   it('uses mobile-friendly numeric keyboards for failed reps and target editing', async () => {
