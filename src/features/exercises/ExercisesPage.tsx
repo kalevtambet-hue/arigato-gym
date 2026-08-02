@@ -21,6 +21,8 @@ async function addExercise(name: string, machineNumber: string, notes: string) {
     name,
     machineNumber,
     notes,
+    primaryTargetGroup: '',
+    secondaryTargetGroups: [],
     createdAt: timestamp,
     updatedAt: timestamp,
   });

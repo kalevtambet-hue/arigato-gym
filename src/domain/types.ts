@@ -22,5 +22,7 @@ export type SessionSeed = {
   targetRepsMax: number;
   currentWeight: number;
   weightStep: number;
+  primaryTargetGroup?: string;
+  secondaryTargetGroups?: string[];
   sortOrder: number;
 };
