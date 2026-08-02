@@ -111,6 +111,24 @@ export class AppDb extends Dexie {
       setResults: 'id, workoutSessionExerciseId, setNumber',
       exerciseEvents: 'id, exerciseId, createdAt, type, actor',
     });
+    this.version(7)
+      .stores({
+        exercises: 'id, name, machineNumber, updatedAt',
+        workoutDays: 'id, sortOrder, isArchived, updatedAt',
+        dayExercises: 'id, workoutDayId, exerciseId, sortOrder, updatedAt',
+        sessions: 'id, workoutDayId, status, performedAt',
+        sessionExercises: 'id, workoutSessionId, dayExerciseId, exerciseId, orderIndex, performedOrder',
+        setResults: 'id, workoutSessionExerciseId, setNumber',
+        exerciseEvents: 'id, exerciseId, createdAt, type, actor',
+      })
+      .upgrade(async (tx) => {
+        const exerciseIdByDayExerciseId = new Map(
+          (await tx.table('dayExercises').toArray()).map((row) => [row.id, row.exerciseId]),
+        );
+        await tx.table('sessionExercises').toCollection().modify((row) => {
+          row.exerciseId ??= exerciseIdByDayExerciseId.get(row.dayExerciseId) ?? null;
+        });
+      });
   }
 }
 

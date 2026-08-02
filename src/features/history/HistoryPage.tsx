@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { db } from '../../db/appDb';
 import { formatResultValue, formatTarget } from '../../domain/targetMode';
 
@@ -28,7 +29,17 @@ export function HistoryPage() {
   const sessions = useLiveQuery(() => db.sessions.orderBy('performedAt').reverse().toArray(), []);
   const sessionExercises = useLiveQuery(() => db.sessionExercises.toArray(), []);
   const setResults = useLiveQuery(() => db.setResults.toArray(), []);
+  const [searchParams] = useSearchParams();
+  const exerciseId = searchParams.get('exerciseId');
+  const selectedExercise = useLiveQuery(async () => {
+    if (!exerciseId) return null;
+    return (await db.exercises.get(exerciseId)) ?? null;
+  }, [exerciseId]);
   const [exerciseFilter, setExerciseFilter] = useState('');
+
+  useEffect(() => {
+    setExerciseFilter(exerciseId && selectedExercise ? selectedExercise.name : '');
+  }, [exerciseId, selectedExercise]);
 
   const items = useMemo(() => {
     const resultsByExercise = new Map<string, Array<{ status: 'success' | 'failed'; completedReps: number }>>();
@@ -45,8 +56,10 @@ export function HistoryPage() {
       const exercises = (sessionExercises ?? [])
         .filter((item) => item.workoutSessionId === session.id)
         .filter((item) =>
-          exerciseFilter.trim()
-            ? item.exerciseName.toLowerCase().includes(exerciseFilter.toLowerCase())
+          exerciseId
+            ? item.exerciseId === exerciseId
+            : exerciseFilter.trim()
+              ? item.exerciseName.toLowerCase().includes(exerciseFilter.toLowerCase())
             : true,
         )
         .sort(
@@ -71,7 +84,7 @@ export function HistoryPage() {
         completedExercises: exercises.filter((item) => item.isComplete).length,
       };
     });
-  }, [sessions, sessionExercises, setResults, exerciseFilter]);
+  }, [sessions, sessionExercises, setResults, exerciseFilter, exerciseId]);
 
   return (
     <section className="page">
@@ -87,6 +100,7 @@ export function HistoryPage() {
           <input value={exerciseFilter} onChange={(event) => setExerciseFilter(event.target.value)} />
         </label>
       </div>
+      {exerciseId && selectedExercise === null ? <p className="empty-card">Valitud harjutust ei leitud.</p> : null}
       <div className="stack">
         {items.map(({ session, exercises, completedExercises }) => (
           <details key={session.id} className="panel history-session" data-testid={`history-session-${session.id}`}>

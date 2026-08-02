@@ -51,6 +51,7 @@ export type WorkoutSessionExerciseRecord = {
   id: string;
   workoutSessionId: string;
   dayExerciseId: string;
+  exerciseId?: string | null;
   exerciseName: string;
   machineNumber: string;
   targetSets: number;

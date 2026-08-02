@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import App from '../../App';
 import { db } from '../../db/appDb';
 import { createInMemorySeed } from '../../db/repositories';
@@ -45,7 +45,7 @@ describe('workout plan routes', () => {
     expect(await screen.findByRole('heading', { name: 'Kavad' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: /^Päev 1/ })).toHaveAttribute('href', `/kavad/${seed.workoutDays[0].id}`);
     expect(screen.getByRole('button', { name: 'Lisa treeningpäev' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Lisa harjutus' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Lisa harjutus' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /^Päev 1/ }));
 
@@ -86,7 +86,7 @@ describe('workout plan routes', () => {
     expect(screen.getByLabelText('Sihi tüüp')).toHaveValue('range');
   });
 
-  it('lists, edits, and deletes base exercises with their notes from /kavad', async () => {
+  it('keeps base exercise CRUD on the dedicated exercises route instead of /kavad', async () => {
     const seed = createInMemorySeed();
     const timestamp = nowIso();
     const exerciseId = createId('exercise');
@@ -100,28 +100,11 @@ describe('workout plan routes', () => {
       targetSets: 3, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15,
       currentWeight: 100, weightStep: 5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp,
     });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-
     render(<MemoryRouter initialEntries={['/kavad']}><App /></MemoryRouter>);
-    const user = userEvent.setup();
 
-    expect(await screen.findByText('Leg Press')).toBeInTheDocument();
-    expect(screen.getByText('Jalad õla laiuselt')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Muuda Leg Press' }));
-    await user.clear(screen.getByLabelText('Harjutuse nimi'));
-    await user.type(screen.getByLabelText('Harjutuse nimi'), 'Hack Squat');
-    await user.clear(screen.getByLabelText('Märkus'));
-    await user.type(screen.getByLabelText('Märkus'), 'Kontrolli sügavust');
-    await user.click(screen.getByRole('button', { name: 'Salvesta harjutus' }));
-
-    expect(await screen.findByText('Hack Squat')).toBeInTheDocument();
-    expect(screen.getByText('Kontrolli sügavust')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Kustuta Hack Squat' }));
-
-    await waitFor(async () => {
-      expect(screen.queryByText('Hack Squat')).not.toBeInTheDocument();
-      expect(await db.dayExercises.where('exerciseId').equals(exerciseId).count()).toBe(0);
-    });
+    expect(await screen.findByRole('heading', { name: 'Kavad' })).toBeInTheDocument();
+    expect(screen.queryByText('Leg Press')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Lisa harjutus' })).not.toBeInTheDocument();
   });
 
   it('shows a not-found state for an unknown workout day route', async () => {

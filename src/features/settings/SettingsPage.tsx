@@ -145,6 +145,7 @@ export function SettingsPage() {
             id: String(row.id ?? ''),
             workoutSessionId: String(row.workoutSessionId ?? ''),
             dayExerciseId: String(row.dayExerciseId ?? ''),
+            exerciseId: row.exerciseId === undefined || row.exerciseId === '' ? null : String(row.exerciseId),
             exerciseName: String(row.exerciseName ?? ''),
             machineNumber: String(row.machineNumber ?? ''),
             targetSets: Number(row.targetSets ?? 0),

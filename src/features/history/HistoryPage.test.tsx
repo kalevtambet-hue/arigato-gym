@@ -1,8 +1,10 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../db/appDb';
 import { createId } from '../../lib/id';
 import { HistoryPage } from './HistoryPage';
+import { Link, MemoryRouter } from 'react-router-dom';
 
 function nowIso() {
   return new Date().toISOString();
@@ -85,7 +87,7 @@ describe('HistoryPage', () => {
       },
     ]);
 
-    render(<HistoryPage />);
+    render(<MemoryRouter><HistoryPage /></MemoryRouter>);
 
     const details = await screen.findByTestId(`history-session-${sessionId}`);
     expect(details).not.toHaveAttribute('open');
@@ -141,7 +143,7 @@ describe('HistoryPage', () => {
       },
     ]);
 
-    render(<HistoryPage />);
+    render(<MemoryRouter><HistoryPage /></MemoryRouter>);
 
     const details = await screen.findByTestId(`history-session-${sessionId}`);
     details.setAttribute('open', '');
@@ -198,7 +200,7 @@ describe('HistoryPage', () => {
       },
     ]);
 
-    render(<HistoryPage />);
+    render(<MemoryRouter><HistoryPage /></MemoryRouter>);
 
     const details = await screen.findByTestId(`history-session-${sessionId}`);
     details.setAttribute('open', '');
@@ -271,12 +273,77 @@ describe('HistoryPage', () => {
       },
     ]);
 
-    render(<HistoryPage />);
+    render(<MemoryRouter><HistoryPage /></MemoryRouter>);
 
     const details = await screen.findByTestId(`history-session-${sessionId}`);
     details.setAttribute('open', '');
 
     const names = (await screen.findAllByRole('strong')).map((element) => element.textContent);
     expect(names.slice(-3)).toEqual(['Chest Press', 'Shoulder Press', 'Leg Press']);
+  });
+
+  it('filters same-named snapshots by their exact exercise identity', async () => {
+    const timestamp = nowIso();
+    await db.exercises.bulkAdd([
+      { id: 'chest-a', name: 'Chest Press', machineNumber: '12', notes: '', createdAt: timestamp, updatedAt: timestamp },
+      { id: 'chest-b', name: 'Chest Press', machineNumber: '13', notes: '', createdAt: timestamp, updatedAt: timestamp },
+    ]);
+    const sessionId = createId('session');
+    await db.sessions.add({ id: sessionId, workoutDayId: createId('day'), performedAt: timestamp, status: 'completed', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.bulkAdd([
+      { id: 'selected', workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseId: 'chest-a', exerciseName: 'Chest Press', machineNumber: '12', targetSets: 1, successesRequired: 1, repMode: 'fixed', targetRepsMin: 10, targetRepsMax: 10, currentWeight: 60, weightStep: 5, orderIndex: 0 },
+      { id: 'same-name', workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseId: 'chest-b', exerciseName: 'Chest Press', machineNumber: '13', targetSets: 1, successesRequired: 1, repMode: 'fixed', targetRepsMin: 10, targetRepsMax: 10, currentWeight: 60, weightStep: 5, orderIndex: 1 },
+    ]);
+
+    render(<MemoryRouter initialEntries={['/ajalugu?exerciseId=chest-a']}><HistoryPage /></MemoryRouter>);
+
+    await waitFor(() => expect(screen.getByLabelText('Filtreeri harjutuse järgi')).toHaveValue('Chest Press'));
+    expect(screen.getByTestId('history-exercise-selected')).toBeInTheDocument();
+    expect(screen.queryByTestId('history-exercise-same-name')).not.toBeInTheDocument();
+  });
+
+  it('keeps the historical snapshot name when a filtered exercise is renamed', async () => {
+    const timestamp = nowIso();
+    const sessionId = createId('session');
+    await db.exercises.add({ id: 'chest', name: 'New Chest Press', machineNumber: '12', notes: '', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.add({ id: sessionId, workoutDayId: createId('day'), performedAt: timestamp, status: 'completed', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({ id: 'historical', workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseId: 'chest', exerciseName: 'Old Chest Press', machineNumber: '12', targetSets: 1, successesRequired: 1, repMode: 'fixed', targetRepsMin: 10, targetRepsMax: 10, currentWeight: 60, weightStep: 5, orderIndex: 0 });
+
+    render(<MemoryRouter initialEntries={['/ajalugu?exerciseId=chest']}><HistoryPage /></MemoryRouter>);
+
+    expect(await screen.findByText('Old Chest Press')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Filtreeri harjutuse järgi')).toHaveValue('New Chest Press'));
+  });
+
+  it('shows a not-found filtered state for a deleted or unknown exercise id', async () => {
+    const timestamp = nowIso();
+    const sessionId = createId('session');
+    await db.sessions.add({ id: sessionId, workoutDayId: createId('day'), performedAt: timestamp, status: 'completed', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({ id: 'unrelated', workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseId: 'other', exerciseName: 'Leg Press', machineNumber: '17', targetSets: 1, successesRequired: 1, repMode: 'fixed', targetRepsMin: 10, targetRepsMax: 10, currentWeight: 60, weightStep: 5, orderIndex: 0 });
+
+    render(<MemoryRouter initialEntries={['/ajalugu?exerciseId=deleted']}><HistoryPage /></MemoryRouter>);
+
+    expect(await screen.findByText('Valitud harjutust ei leitud.')).toBeInTheDocument();
+    expect(screen.queryByTestId('history-exercise-unrelated')).not.toBeInTheDocument();
+  });
+
+  it('returns to unfiltered history when the exerciseId query parameter is removed', async () => {
+    const timestamp = nowIso();
+    const sessionId = createId('session');
+    await db.exercises.add({ id: 'chest', name: 'Chest Press', machineNumber: '12', notes: '', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.add({ id: sessionId, workoutDayId: createId('day'), performedAt: timestamp, status: 'completed', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.bulkAdd([
+      { id: 'chest-row', workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseId: 'chest', exerciseName: 'Chest Press', machineNumber: '12', targetSets: 1, successesRequired: 1, repMode: 'fixed', targetRepsMin: 10, targetRepsMax: 10, currentWeight: 60, weightStep: 5, orderIndex: 0 },
+      { id: 'leg-row', workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseId: 'leg', exerciseName: 'Leg Press', machineNumber: '17', targetSets: 1, successesRequired: 1, repMode: 'fixed', targetRepsMin: 10, targetRepsMax: 10, currentWeight: 60, weightStep: 5, orderIndex: 1 },
+    ]);
+
+    render(<MemoryRouter initialEntries={['/ajalugu?exerciseId=chest']}><Link to="/ajalugu">Eemalda filter</Link><HistoryPage /></MemoryRouter>);
+    const user = userEvent.setup();
+    expect(await screen.findByTestId('history-exercise-chest-row')).toBeInTheDocument();
+    expect(screen.queryByTestId('history-exercise-leg-row')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: 'Eemalda filter' }));
+
+    expect(await screen.findByTestId('history-exercise-leg-row')).toBeInTheDocument();
   });
 });
