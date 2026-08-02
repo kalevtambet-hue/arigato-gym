@@ -1,5 +1,7 @@
 export type RepMode = 'fixed' | 'range' | 'duration-fixed' | 'duration-range';
 
+export type WorkoutSessionStatus = 'active' | 'completed' | 'partial';
+
 export type ExerciseRecord = {
   id: string;
   name: string;
@@ -40,7 +42,7 @@ export type WorkoutSessionRecord = {
   id: string;
   workoutDayId: string;
   performedAt: string;
-  status: 'active' | 'completed';
+  status: WorkoutSessionStatus;
   createdAt: string;
   updatedAt: string;
 };

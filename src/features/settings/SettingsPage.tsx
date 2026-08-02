@@ -1,4 +1,4 @@
-import type { BackupPayload } from '../../db/types';
+import type { BackupPayload, WorkoutSessionStatus } from '../../db/types';
 import { exportBackup, importBackup } from '../../db/repositories';
 import { parseCsv, toCsv } from './exportCsv';
 
@@ -10,6 +10,17 @@ function parseRepMode(value: unknown) {
       return value;
     default:
       return 'range';
+  }
+}
+
+function parseSessionStatus(value: unknown): WorkoutSessionStatus {
+  switch (value) {
+    case 'active':
+    case 'partial':
+    case 'completed':
+      return value;
+    default:
+      return 'completed';
   }
 }
 
@@ -124,7 +135,7 @@ export function SettingsPage() {
             id: String(row.id ?? ''),
             workoutDayId: String(row.workoutDayId ?? ''),
             performedAt: String(row.performedAt ?? ''),
-            status: row.status === 'active' ? 'active' : 'completed',
+            status: parseSessionStatus(row.status),
             createdAt: String(row.createdAt ?? ''),
             updatedAt: String(row.updatedAt ?? ''),
           }));
