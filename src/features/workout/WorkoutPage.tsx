@@ -23,6 +23,8 @@ import { buildSessionExercises } from '../../domain/session';
 import { formatTarget, getSuccessValue, isDurationMode } from '../../domain/targetMode';
 import { createId } from '../../lib/id';
 import { getSessionCompletionKind } from './workoutPresentation';
+import { ActiveExerciseCard } from './ActiveExerciseCard';
+import { SetActionBar } from './SetActionBar';
 
 type DayExerciseView = DayExerciseRecord & {
   exercise?: ExerciseRecord;
@@ -379,6 +381,46 @@ async function updateSessionExerciseTarget(params: {
   });
 }
 
+async function adjustSessionExerciseWeight(params: {
+  sessionExerciseId: string;
+  dayExerciseId: string;
+  exerciseId: string;
+  weightDelta: number;
+}) {
+  const { sessionExerciseId, dayExerciseId, exerciseId, weightDelta } = params;
+  if (weightDelta === 0) {
+    return;
+  }
+
+  await db.transaction('rw', db.sessionExercises, db.dayExercises, db.exerciseEvents, async () => {
+    const sessionExercise = await db.sessionExercises.get(sessionExerciseId);
+    if (!sessionExercise || isDurationMode(sessionExercise.repMode)) {
+      return;
+    }
+
+    const nextWeight = Math.max(0, sessionExercise.currentWeight + weightDelta);
+    if (nextWeight === sessionExercise.currentWeight) {
+      return;
+    }
+
+    await db.sessionExercises.update(sessionExerciseId, { currentWeight: nextWeight });
+    const dayExercise = await db.dayExercises.get(dayExerciseId);
+    if (dayExercise) {
+      await db.dayExercises.update(dayExerciseId, { currentWeight: nextWeight, updatedAt: nowIso() });
+    }
+    if (exerciseId) {
+      await addExerciseChangeEvent({
+        exerciseId,
+        sessionExerciseId,
+        actor: 'user',
+        field: 'currentWeight',
+        fromValue: formatWeightValue(sessionExercise.currentWeight),
+        toValue: formatWeightValue(nextWeight),
+      });
+    }
+  });
+}
+
 async function completeWorkout(
   session: WorkoutSessionRecord,
   sessionExercises: WorkoutSessionExerciseRecord[],
@@ -602,7 +644,9 @@ export function WorkoutPage() {
     status: SetResultRecord['status'];
     reps: string;
   } | null>(null);
+  const [selectedReps, setSelectedReps] = useState<number | null>(null);
   const swipeStartX = useRef<Record<string, number>>({});
+  const weightUpdateQueue = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     if (!workoutDays?.length) {
@@ -690,6 +734,13 @@ export function WorkoutPage() {
     [nextExercise, nextExerciseResults],
   );
 
+  const nextExerciseRepTarget = nextExercise
+    ? getSuccessValue(nextExercise.repMode, nextExercise.targetRepsMin, nextExercise.targetRepsMax)
+    : null;
+  const nextExerciseRepResetKey = nextExercise
+    ? `${nextExercise.id}:${nextExercise.repMode}:${nextExercise.targetRepsMin}:${nextExercise.targetRepsMax}`
+    : null;
+
   const sessionCompletionKind = useMemo(() => {
     const resultsByExercise = new Map<string, SetResultRecord[]>();
     for (const result of setResults ?? []) {
@@ -757,6 +808,10 @@ export function WorkoutPage() {
   useEffect(() => {
     setSetEditTarget(null);
   }, [nextExercise?.id]);
+
+  useEffect(() => {
+    setSelectedReps(nextExerciseRepTarget);
+  }, [nextExerciseRepResetKey, nextExerciseRepTarget]);
 
   useEffect(() => {
     if (activeSession === undefined) {
@@ -863,6 +918,20 @@ export function WorkoutPage() {
     });
   }
 
+  function queueWeightAdjustment(sessionExercise: WorkoutSessionExerciseRecord, exerciseId: string, requestedWeight: number) {
+    const weightDelta = requestedWeight - sessionExercise.currentWeight;
+    weightUpdateQueue.current = weightUpdateQueue.current
+      .catch(() => undefined)
+      .then(() =>
+        adjustSessionExerciseWeight({
+          sessionExerciseId: sessionExercise.id,
+          dayExerciseId: sessionExercise.dayExerciseId,
+          exerciseId,
+          weightDelta,
+        }),
+      );
+  }
+
   return (
     <section className="page">
       <div className="section-header">
@@ -945,57 +1014,27 @@ export function WorkoutPage() {
 
       {activeSession && nextExercise ? (
         <>
-          <article className="workout-card" data-testid="active-workout-card">
-            <p className="eyebrow">Järgmine harjutus</p>
-            <h3>{nextExercise.exerciseName}</h3>
-            {!isDurationMode(nextExercise.repMode) ? (
-              <div className="target-pill">
-                Masin #{nextExercise.machineNumber || '-'} · {nextExercise.targetSets} x{' '}
-                {formatTarget(
-                  nextExercise.repMode,
-                  nextExercise.targetRepsMin,
-                  nextExercise.targetRepsMax,
-                  nextExercise.currentWeight,
-                )}
-              </div>
-            ) : (
-              <p className="target-copy">
-                Masin #{nextExercise.machineNumber || '-'} · {nextExercise.targetSets} x{' '}
-                {formatTarget(
-                  nextExercise.repMode,
-                  nextExercise.targetRepsMin,
-                  nextExercise.targetRepsMax,
-                  nextExercise.currentWeight,
-                )}
-              </p>
-            )}
-            <p className="set-badge">Seeria {nextSetNumber}</p>
-            <div className="set-dots" aria-label="Seeriate seis">
-              {nextExerciseSetStates.map((state, index) => (
-                <button
-                  type="button"
-                  key={`${nextExercise.id}-set-${index + 1}`}
-                  data-testid={`set-dot-${index + 1}`}
-                  className={`set-dot set-dot-${state}`}
-                  aria-label={`Seeria ${index + 1}: ${state}`}
-                  disabled={state === 'pending'}
-                  onClick={() => {
-                    const targetResult = nextExerciseResults.find((item) => item.setNumber === index + 1);
-                    if (!targetResult) {
-                      return;
-                    }
-
-                    setSetEditTarget({
-                      id: targetResult.id,
-                      sessionExerciseId: targetResult.workoutSessionExerciseId,
-                      setNumber: targetResult.setNumber,
-                      status: targetResult.status,
-                      reps: String(targetResult.completedReps),
-                    });
-                  }}
-                />
-              ))}
-            </div>
+          <ActiveExerciseCard
+            exercise={nextExercise}
+            setNumber={nextSetNumber}
+            setStates={nextExerciseSetStates}
+            selectedReps={selectedReps ?? getSuccessValue(nextExercise.repMode, nextExercise.targetRepsMin, nextExercise.targetRepsMax)}
+            onRepsChange={setSelectedReps}
+            onWeightChange={(weight) =>
+              queueWeightAdjustment(nextExercise, nextExerciseBaseId ?? '', weight)
+            }
+            onSetClick={(setNumber) => {
+              const targetResult = nextExerciseResults.find((item) => item.setNumber === setNumber);
+              if (!targetResult) return;
+              setSetEditTarget({
+                id: targetResult.id,
+                sessionExerciseId: targetResult.workoutSessionExerciseId,
+                setNumber: targetResult.setNumber,
+                status: targetResult.status,
+                reps: String(targetResult.completedReps),
+              });
+            }}
+          >
             {restTimer?.sessionExerciseId === nextExercise.id ? (
               <div className="rest-timer-panel">
                 <strong>Puhkus</strong>
@@ -1416,7 +1455,7 @@ export function WorkoutPage() {
             >
               Katkesta treening
             </button>
-          </article>
+          </ActiveExerciseCard>
 
           {upcomingExercises.length > 0 ? (
             <div className="panel">
@@ -1472,33 +1511,17 @@ export function WorkoutPage() {
       ) : null}
 
       {activeSession && nextExercise ? (
-        <div className="sticky-action-bar" data-testid="sticky-action-bar">
-          <button
-            type="button"
-            className="success-button"
-            onClick={() =>
-              void handleSetSave(
-                nextExercise,
-                nextSetNumber,
-                'success',
-                getSuccessValue(
-                  nextExercise.repMode,
-                  nextExercise.targetRepsMin,
-                  nextExercise.targetRepsMax,
-                ),
-              )
-            }
-          >
-            Tehtud
-          </button>
-          <button
-            type="button"
-            className="warning-button"
-            onClick={() => setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' })}
-          >
-            Ei tulnud täis
-          </button>
-        </div>
+        <SetActionBar
+          onFailed={() => setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' })}
+          onSuccess={() =>
+            void handleSetSave(
+              nextExercise,
+              nextSetNumber,
+              'success',
+              selectedReps ?? getSuccessValue(nextExercise.repMode, nextExercise.targetRepsMin, nextExercise.targetRepsMax),
+            )
+          }
+        />
       ) : null}
 
       {activeSession && !nextExercise && sessionCompletionKind === 'completed' && completedSummary.length === 0 ? (
