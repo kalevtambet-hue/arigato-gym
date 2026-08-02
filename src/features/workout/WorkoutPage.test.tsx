@@ -124,6 +124,84 @@ describe('WorkoutPage', () => {
     expect(screen.getByText('Jäänud 1')).toBeInTheDocument();
   });
 
+  it('allows partial completion when duplicate set numbers leave a planned set missing', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+
+    await db.workoutDays.add({
+      id: dayId,
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: dayId,
+      performedAt: timestamp,
+      status: 'active',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await db.sessionExercises.add({
+      id: sessionExerciseId,
+      workoutSessionId: sessionId,
+      dayExerciseId: createId('day-exercise'),
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+    await db.setResults.bulkAdd([
+      {
+        id: `${sessionExerciseId}-1`,
+        workoutSessionExerciseId: sessionExerciseId,
+        setNumber: 1,
+        status: 'success',
+        completedReps: 15,
+        usedWeight: 60,
+      },
+      {
+        id: `${sessionExerciseId}-duplicate-1`,
+        workoutSessionExerciseId: sessionExerciseId,
+        setNumber: 1,
+        status: 'success',
+        completedReps: 15,
+        usedWeight: 60,
+      },
+      {
+        id: `${sessionExerciseId}-2`,
+        workoutSessionExerciseId: sessionExerciseId,
+        setNumber: 2,
+        status: 'success',
+        completedReps: 15,
+        usedWeight: 60,
+      },
+    ]);
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('Tehtud 1 / 1')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Lõpeta treening' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Lõpeta poolikuna' }));
+
+    await waitFor(async () => {
+      expect((await db.sessions.get(sessionId))?.status).toBe('partial');
+      expect(await db.setResults.count()).toBe(3);
+    });
+  });
+
   it('shows the selected day note and exercise preview before starting a workout', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');

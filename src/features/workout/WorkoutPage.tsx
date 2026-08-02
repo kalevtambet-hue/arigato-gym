@@ -1,7 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { db } from '../../db/appDb';
-import { addExerciseChangeEvent, addExerciseNote, ensureSeedData } from '../../db/repositories';
+import {
+  addExerciseChangeEvent,
+  addExerciseNote,
+  completeSessionPartially,
+  ensureSeedData,
+} from '../../db/repositories';
 import type {
   DayExerciseRecord,
   ExerciseEventRecord,
@@ -17,6 +22,7 @@ import { countConsecutiveSuccesses } from '../../domain/consecutiveProgression';
 import { buildSessionExercises } from '../../domain/session';
 import { formatTarget, getSuccessValue, isDurationMode } from '../../domain/targetMode';
 import { createId } from '../../lib/id';
+import { getSessionCompletionKind } from './workoutPresentation';
 
 type DayExerciseView = DayExerciseRecord & {
   exercise?: ExerciseRecord;
@@ -683,6 +689,22 @@ export function WorkoutPage() {
     () => (nextExercise ? getSetStates(nextExercise.targetSets, nextExerciseResults) : []),
     [nextExercise, nextExerciseResults],
   );
+
+  const sessionCompletionKind = useMemo(() => {
+    const resultsByExercise = new Map<string, SetResultRecord[]>();
+    for (const result of setResults ?? []) {
+      const results = resultsByExercise.get(result.workoutSessionExerciseId) ?? [];
+      results.push(result);
+      resultsByExercise.set(result.workoutSessionExerciseId, results);
+    }
+
+    return (sessionExercises ?? []).every(
+      (item) =>
+        getSessionCompletionKind(item.targetSets, resultsByExercise.get(item.id) ?? []) === 'completed',
+    )
+      ? 'completed'
+      : 'partial';
+  }, [sessionExercises, setResults]);
 
   const progress = useMemo(() => {
     const totalExercises = (sessionExercises ?? []).length;
@@ -1479,7 +1501,7 @@ export function WorkoutPage() {
         </div>
       ) : null}
 
-      {activeSession && !nextExercise && completedSummary.length === 0 ? (
+      {activeSession && !nextExercise && sessionCompletionKind === 'completed' && completedSummary.length === 0 ? (
         <div className="panel">
           <h3>Treening valmis</h3>
           <p className="muted">Kõik seeriad said kirja. Genereeri järgmised sihid.</p>
@@ -1487,6 +1509,10 @@ export function WorkoutPage() {
             type="button"
             className="primary-button"
             onClick={async () => {
+              if (sessionCompletionKind !== 'completed') {
+                return;
+              }
+
               const completedSessions = await db.sessions.where('status').equals('completed').toArray();
               const historicalSessionExercises = await db.sessionExercises.toArray();
               const historicalSetResults = await db.setResults.toArray();
@@ -1538,6 +1564,26 @@ export function WorkoutPage() {
             }}
           >
             Lõpeta treening
+          </button>
+        </div>
+      ) : null}
+
+      {activeSession && !nextExercise && sessionCompletionKind === 'partial' && completedSummary.length === 0 ? (
+        <div className="panel">
+          <h3>Treening jäi poolikuks</h3>
+          <p className="muted">Kõik planeeritud seeriad ei ole korrektselt kirjas.</p>
+          <button
+            type="button"
+            className="warning-button"
+            onClick={async () => {
+              if (sessionCompletionKind !== 'partial') {
+                return;
+              }
+
+              await completeSessionPartially(activeSession.id);
+            }}
+          >
+            Lõpeta poolikuna
           </button>
         </div>
       ) : null}
