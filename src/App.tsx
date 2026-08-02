@@ -5,6 +5,7 @@ import { ExerciseDetailPage } from './features/exercises/ExerciseDetailPage';
 import { ExercisesListPage } from './features/exercises/ExercisesListPage';
 import { KavadPage } from './features/plans/KavadPage';
 import { WorkoutDayDetailPage } from './features/plans/WorkoutDayDetailPage';
+import { MorePage } from './features/more/MorePage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { WorkoutPage } from './features/workout/WorkoutPage';
 
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/harjutused" element={<ExercisesListPage />} />
         <Route path="/harjutused/:exerciseId" element={<ExerciseDetailPage />} />
         <Route path="/ajalugu" element={<HistoryPage />} />
+        <Route path="/rohkem" element={<MorePage />} />
         <Route path="/seaded" element={<SettingsPage />} />
       </Route>
     </Routes>

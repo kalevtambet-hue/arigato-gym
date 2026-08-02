@@ -242,6 +242,36 @@ textarea {
   color: #f8fafc;
 }
 
+.more-links {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.more-link-card {
+  display: grid;
+  gap: 0.4rem;
+  min-height: 7.5rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.8);
+  color: #f8fafc;
+  text-decoration: none;
+}
+
+.more-link-card:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 3px;
+}
+
+.more-link-card:hover {
+  background: rgba(30, 41, 59, 0.9);
+}
+
+.more-link-card span {
+  color: #94a3b8;
+}
+
 .day-tabs {
   display: flex;
   gap: 0.6rem;
