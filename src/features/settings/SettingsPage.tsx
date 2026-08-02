@@ -2,6 +2,7 @@ import type { BackupPayload, WorkoutSessionStatus } from '../../db/types';
 import { exportBackup, importBackup } from '../../db/repositories';
 import { useState } from 'react';
 import { parseCsv, toCsv } from './exportCsv';
+import { getDefaultRestSeconds, setDefaultRestSeconds } from './restDuration';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 
 function parseRepMode(value: unknown) {
@@ -36,9 +37,20 @@ function downloadText(filename: string, content: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
+function parseRestDuration(value: string): number | null {
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const seconds = Number(value);
+  return Number.isSafeInteger(seconds) ? seconds : null;
+}
+
 export function SettingsPage() {
   const versionLabel = `Versioon ${__APP_VERSION__} (${__APP_BUILD__})`;
   const [themePreference, setThemePreferenceState] = useState(getThemePreference);
+  const [defaultRestSeconds, setDefaultRestSecondsState] = useState(getDefaultRestSeconds);
+  const [defaultRestDurationDraft, setDefaultRestDurationDraft] = useState(() => String(getDefaultRestSeconds()));
   const helpSections = [
     {
       title: 'Privaatsus',
@@ -225,6 +237,35 @@ export function SettingsPage() {
               <option value="light">Hele</option>
               <option value="dark">Tume</option>
             </select>
+          </label>
+        </article>
+        <article className="panel">
+          <h3>Treening</h3>
+          <label>
+            Vaikimisi puhkeaeg (sek)
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={defaultRestDurationDraft}
+              onChange={(event) => {
+                const draft = event.target.value;
+                setDefaultRestDurationDraft(draft);
+                const seconds = parseRestDuration(draft);
+                if (seconds === null) {
+                  return;
+                }
+
+                setDefaultRestSeconds(seconds);
+                setDefaultRestSecondsState(seconds);
+              }}
+              onBlur={() => {
+                if (parseRestDuration(defaultRestDurationDraft) === null) {
+                  setDefaultRestDurationDraft(String(defaultRestSeconds));
+                }
+              }}
+            />
           </label>
         </article>
         <article className="panel">

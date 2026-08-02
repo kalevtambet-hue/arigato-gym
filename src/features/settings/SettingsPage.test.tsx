@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../db/appDb';
 import { SettingsPage } from './SettingsPage';
+import { getDefaultRestSeconds } from './restDuration';
 
 async function clearDatabase() {
   await db.transaction(
@@ -21,6 +22,10 @@ async function clearDatabase() {
 }
 
 beforeEach(clearDatabase);
+
+beforeEach(() => {
+  localStorage.clear();
+});
 
 afterEach(() => {
   cleanup();
@@ -51,6 +56,61 @@ describe('SettingsPage', () => {
     await user.selectOptions(screen.getByLabelText('Välimus'), 'dark');
     expect(document.documentElement.dataset.theme).toBe('dark');
     expect(localStorage.getItem('treeninguabiline-theme')).toBe('dark');
+  });
+
+  it('saves a valid default rest duration after the user clears and types a new value', async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    const restDuration = screen.getByLabelText('Vaikimisi puhkeaeg (sek)');
+    expect(restDuration).toHaveValue(60);
+
+    await user.clear(restDuration);
+    expect(restDuration).toHaveValue(null);
+    expect(getDefaultRestSeconds()).toBe(60);
+    await user.type(restDuration, '90');
+    expect(restDuration).toHaveValue(90);
+    expect(getDefaultRestSeconds()).toBe(90);
+  });
+
+  it('keeps the latest valid rest duration when the same edit becomes fractional', async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    const restDuration = screen.getByLabelText('Vaikimisi puhkeaeg (sek)');
+    await user.clear(restDuration);
+    await user.type(restDuration, '90');
+    expect(getDefaultRestSeconds()).toBe(90);
+
+    await user.type(restDuration, '.5');
+    expect(restDuration).toHaveValue(90.5);
+    expect(getDefaultRestSeconds()).toBe(90);
+    await user.tab();
+    expect(restDuration).toHaveValue(90);
+  });
+
+  it('keeps invalid rest-duration drafts out of storage and resets them on blur', async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    const restDuration = screen.getByLabelText('Vaikimisi puhkeaeg (sek)');
+    await user.clear(restDuration);
+    await user.type(restDuration, '90');
+    expect(getDefaultRestSeconds()).toBe(90);
+
+    await user.clear(restDuration);
+    expect(restDuration).toHaveValue(null);
+    expect(getDefaultRestSeconds()).toBe(90);
+    await user.tab();
+    expect(restDuration).toHaveValue(90);
+
+    await user.clear(restDuration);
+    await user.type(restDuration, '-1');
+    expect(restDuration).toHaveValue(-1);
+    expect(getDefaultRestSeconds()).toBe(90);
+    await user.tab();
+    expect(restDuration).toHaveValue(90);
+
   });
 
   it('retains partial session status when importing sessions CSV', async () => {

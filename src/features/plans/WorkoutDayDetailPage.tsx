@@ -6,6 +6,7 @@ import { ensureSeedData } from '../../db/repositories';
 import type { DayExerciseRecord, ExerciseRecord } from '../../db/types';
 import { formatTarget, isDurationMode, isFixedMode } from '../../domain/targetMode';
 import { createId } from '../../lib/id';
+import { getDefaultRestSeconds } from '../settings/restDuration';
 import { canDuplicateDay } from './planDetail';
 
 type DayExerciseView = DayExerciseRecord & { exercise?: ExerciseRecord };
@@ -25,7 +26,7 @@ async function addDayExercise(workoutDayId: string, exerciseId: string) {
   await db.dayExercises.add({ id: createId('day-exercise'), workoutDayId, exerciseId,
     sortOrder: await db.dayExercises.where('workoutDayId').equals(workoutDayId).count(), targetSets: 3,
     successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 40,
-    weightStep: 5, restSeconds: 60, createdAt: timestamp, updatedAt: timestamp });
+    weightStep: 5, restSeconds: getDefaultRestSeconds(), createdAt: timestamp, updatedAt: timestamp });
 }
 async function updateDayExercise(id: string, changes: Partial<Pick<DayExerciseRecord, 'targetSets' | 'successesRequired' | 'repMode' | 'targetRepsMin' | 'targetRepsMax' | 'currentWeight' | 'weightStep'>>) {
   const nextChanges = { ...changes };

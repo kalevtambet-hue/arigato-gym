@@ -6,6 +6,7 @@ import App from '../../App';
 import { db } from '../../db/appDb';
 import { createInMemorySeed } from '../../db/repositories';
 import { createId } from '../../lib/id';
+import { setDefaultRestSeconds } from '../settings/restDuration';
 import { canDuplicateDay } from './planDetail';
 
 function nowIso() {
@@ -112,6 +113,41 @@ describe('workout plan routes', () => {
 
     expect(await screen.findByText('Treeningpäeva ei leitud.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Tagasi kavade juurde' })).toHaveAttribute('href', '/kavad');
+  });
+
+  it('preserves existing rest seconds and applies the configured default to a newly added exercise', async () => {
+    const seed = createInMemorySeed();
+    const timestamp = nowIso();
+    const existingExerciseId = createId('exercise');
+    const newExerciseId = createId('exercise');
+    const existingDayExerciseId = createId('day-exercise');
+    setDefaultRestSeconds(75);
+    await db.workoutDays.bulkAdd(seed.workoutDays);
+    await db.exercises.bulkAdd([
+      { id: existingExerciseId, name: 'Existing Exercise', machineNumber: '1', notes: '', createdAt: timestamp, updatedAt: timestamp },
+      { id: newExerciseId, name: 'New Exercise', machineNumber: '2', notes: '', createdAt: timestamp, updatedAt: timestamp },
+    ]);
+    await db.dayExercises.add({
+      id: existingDayExerciseId, workoutDayId: seed.workoutDays[0].id, exerciseId: existingExerciseId, sortOrder: 0,
+      targetSets: 3, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15,
+      currentWeight: 40, weightStep: 5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp,
+    });
+
+    render(<MemoryRouter initialEntries={[`/kavad/${seed.workoutDays[0].id}`]}><App /></MemoryRouter>);
+    const user = userEvent.setup();
+    await screen.findByTestId('day-exercise-row');
+    await user.selectOptions(screen.getByLabelText('Vali harjutus'), newExerciseId);
+    await user.click(screen.getByRole('button', { name: 'Lisa päeva' }));
+
+    await waitFor(async () => {
+      const newRecord = (await db.dayExercises
+        .where('workoutDayId')
+        .equals(seed.workoutDays[0].id)
+        .toArray())
+        .find((record) => record.exerciseId === newExerciseId);
+      expect(newRecord?.restSeconds).toBe(75);
+    });
+    expect((await db.dayExercises.get(existingDayExerciseId))?.restSeconds).toBe(90);
   });
 
   it('duplicates loaded exercise rows using only persisted day-exercise fields', async () => {
