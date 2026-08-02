@@ -25,6 +25,7 @@ import { createId } from '../../lib/id';
 import { getSessionCompletionKind } from './workoutPresentation';
 import { ActiveExerciseCard } from './ActiveExerciseCard';
 import { SetActionBar } from './SetActionBar';
+import { useWakeLock } from './useWakeLock';
 
 type DayExerciseView = DayExerciseRecord & {
   exercise?: ExerciseRecord;
@@ -583,6 +584,7 @@ export function WorkoutPage() {
   const dayExercises = useLiveQuery(() => db.dayExercises.toArray(), []);
   const exercises = useLiveQuery(() => db.exercises.toArray(), []);
   const activeSession = useLiveQuery(() => db.sessions.where('status').equals('active').first(), []);
+  useWakeLock(Boolean(activeSession));
   const sessionExercises = useLiveQuery<WorkoutSessionExerciseRecord[]>(
     () =>
       activeSession

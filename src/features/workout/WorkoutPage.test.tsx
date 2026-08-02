@@ -668,7 +668,9 @@ describe('WorkoutPage', () => {
     });
   });
 
-  it('restores the rest timer after leaving and returning to the workout page', async () => {
+  it('restores the same next exercise and an elapsed-time-adjusted rest timer after remounting', async () => {
+    const startedAt = new Date('2026-07-13T10:00:00.000Z').valueOf();
+    const now = vi.spyOn(Date, 'now').mockReturnValue(startedAt);
     const timestamp = nowIso();
     const dayId = createId('day');
     const exerciseId = createId('exercise');
@@ -744,12 +746,16 @@ describe('WorkoutPage', () => {
 
     expect(await screen.findByText('Puhkus')).toBeInTheDocument();
     expect(screen.getByText('1:30')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Chest Press' })).toBeInTheDocument();
+
+    now.mockReturnValue(startedAt + 10_000);
 
     firstRender.unmount();
     render(<WorkoutPage />);
 
     expect(await screen.findByText('Puhkus')).toBeInTheDocument();
-    expect(screen.getByText('1:30')).toBeInTheDocument();
+    expect(screen.getByText('1:20')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Chest Press' })).toBeInTheDocument();
   });
 
   it('uses mobile-friendly numeric keyboards for failed reps and target editing', async () => {
