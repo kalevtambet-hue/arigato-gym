@@ -127,5 +127,30 @@ describe('SettingsPage', () => {
     await waitFor(async () => {
       expect((await db.sessions.get('session-1'))?.status).toBe('partial');
     });
+    expect(screen.getByRole('status')).toHaveTextContent('CSV import õnnestus');
+  });
+
+  it('confirms a successful JSON backup import', async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    const backup = JSON.stringify({
+      exercises: [], workoutDays: [], dayExercises: [], sessions: [], sessionExercises: [], setResults: [], exerciseEvents: [],
+    });
+
+    await user.upload(
+      screen.getByLabelText('Impordi varundus'),
+      new File([backup], 'treeninguabiline-varundus.json', { type: 'application/json' }),
+    );
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Varunduse import õnnestus');
+  });
+
+  it('confirms a successful backup export', async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    await user.click(screen.getByRole('button', { name: 'Ekspordi varundus' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Varunduse eksport õnnestus');
   });
 });
