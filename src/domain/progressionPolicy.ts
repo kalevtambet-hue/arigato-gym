@@ -40,7 +40,11 @@ export function evaluateProgression(input: ProgressionInput): ProgressionDecisio
   };
 
   if (input.skipped) {
-    return { ...unchanged, reason: 'skipped' };
+    return {
+      ...unchanged,
+      consecutiveSuccesses: input.previousConsecutiveSuccesses,
+      reason: 'skipped',
+    };
   }
 
   if (input.manuallyChanged) {

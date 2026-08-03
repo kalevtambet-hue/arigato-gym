@@ -26,10 +26,13 @@ function isHistoryExerciseComplete(item: {
 }
 
 function isHistoryExerciseFailed(
-  sessionStatus: 'active' | 'completed' | 'partial',
+  sessionStatus: 'active' | 'completed' | 'partial' | 'aborted',
   isComplete: boolean,
   results: Array<{ status: 'success' | 'failed'; completedReps: number }>,
 ) {
+  if (sessionStatus === 'aborted') {
+    return false;
+  }
   return !isComplete && (sessionStatus !== 'partial' || results.some((result) => result.status === 'failed'));
 }
 
@@ -116,7 +119,13 @@ export function HistoryPage() {
           <details key={session.id} className="panel history-session" data-testid={`history-session-${session.id}`}>
             <summary className="history-summary">
               <strong>{new Date(session.performedAt).toLocaleDateString('et-EE')}</strong>
-              <span>{session.status === 'partial' ? 'Pooleli lõpetatud' : `${completedExercises}/${exercises.length} edukat`}</span>
+              <span>
+                {session.status === 'partial'
+                  ? 'Pooleli lõpetatud'
+                  : session.status === 'aborted'
+                    ? 'Katkestatud'
+                    : `${completedExercises}/${exercises.length} edukat`}
+              </span>
             </summary>
             <ul className="stack-list">
               {exercises.map((item) => (
