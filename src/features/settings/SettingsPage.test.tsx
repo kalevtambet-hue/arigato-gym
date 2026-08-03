@@ -1,6 +1,6 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db/appDb';
 import { SettingsPage } from './SettingsPage';
 import { getDefaultRestSeconds } from './restDuration';
@@ -29,6 +29,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
 });
 
 afterEach(clearDatabase);
@@ -48,6 +49,41 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Kasutamine')).toBeInTheDocument();
     expect(screen.getByText('Varundus')).toBeInTheDocument();
     expect(screen.getByText('Tõrkeotsing')).toBeInTheDocument();
+  });
+
+  it('explains local storage and successful data transfer in Help', () => {
+    render(<SettingsPage />);
+
+    expect(screen.getByText(/ainult selles seadmes ja brauseris/i)).toBeInTheDocument();
+    expect(screen.getByText(/Õnnestunud impordi või ekspordi järel/i)).toBeInTheDocument();
+    expect(screen.getByText(/Versioon tähistab väljalaset/i)).toBeInTheDocument();
+  });
+
+  it('does not clear data when deletion is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    await db.exercises.add({
+      id: 'exercise-1', name: 'Test', machineNumber: '', notes: '', createdAt: '2026-08-03T00:00:00.000Z', updatedAt: '2026-08-03T00:00:00.000Z',
+    });
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    await user.click(screen.getByRole('button', { name: 'Kustuta kõik lokaalsed andmed' }));
+
+    expect(await db.exercises.count()).toBe(1);
+  });
+
+  it('clears data after confirmed deletion', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await db.exercises.add({
+      id: 'exercise-1', name: 'Test', machineNumber: '', notes: '', createdAt: '2026-08-03T00:00:00.000Z', updatedAt: '2026-08-03T00:00:00.000Z',
+    });
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    await user.click(screen.getByRole('button', { name: 'Kustuta kõik lokaalsed andmed' }));
+
+    await waitFor(async () => expect(await db.exercises.count()).toBe(0));
+    expect(screen.getByRole('status')).toHaveTextContent('Kõik lokaalsed andmed on kustutatud');
   });
 
   it('lets the user save a dark theme preference', async () => {

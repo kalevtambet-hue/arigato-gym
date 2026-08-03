@@ -2,14 +2,19 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from './appDb';
 import * as repositories from './repositories';
 
-const { createInMemorySeed, ensureSeedData, importBackup } = repositories;
+const { clearLocalData, createInMemorySeed, ensureSeedData, importBackup } = repositories;
 
 describe('createInMemorySeed', () => {
   beforeEach(async () => {
     await db.transaction(
       'rw',
-      [db.setResults, db.sessionExercises, db.sessions, db.dayExercises, db.workoutDays, db.exercises],
+      [db.progressionTargetGroups, db.auditEvents, db.setResultRevisions, db.sessionSnapshots, db.exerciseEvents, db.setResults, db.sessionExercises, db.sessions, db.dayExercises, db.workoutDays, db.exercises],
       async () => {
+        await db.progressionTargetGroups.clear();
+        await db.auditEvents.clear();
+        await db.setResultRevisions.clear();
+        await db.sessionSnapshots.clear();
+        await db.exerciseEvents.clear();
         await db.setResults.clear();
         await db.sessionExercises.clear();
         await db.sessions.clear();
@@ -23,8 +28,13 @@ describe('createInMemorySeed', () => {
   afterEach(async () => {
     await db.transaction(
       'rw',
-      [db.setResults, db.sessionExercises, db.sessions, db.dayExercises, db.workoutDays, db.exercises],
+      [db.progressionTargetGroups, db.auditEvents, db.setResultRevisions, db.sessionSnapshots, db.exerciseEvents, db.setResults, db.sessionExercises, db.sessions, db.dayExercises, db.workoutDays, db.exercises],
       async () => {
+        await db.progressionTargetGroups.clear();
+        await db.auditEvents.clear();
+        await db.setResultRevisions.clear();
+        await db.sessionSnapshots.clear();
+        await db.exerciseEvents.clear();
         await db.setResults.clear();
         await db.sessionExercises.clear();
         await db.sessions.clear();
@@ -38,6 +48,25 @@ describe('createInMemorySeed', () => {
   it('creates starter workout days for a new user', () => {
     const seed = createInMemorySeed();
     expect(seed.workoutDays.map((day) => day.name)).toEqual(['Päev 1', 'Päev 2']);
+  });
+
+  it('clears every locally stored table', async () => {
+    const createdAt = '2026-08-03T00:00:00.000Z';
+    await db.exercises.add({
+      id: 'exercise-1', name: 'Test', machineNumber: '', notes: '', createdAt, updatedAt: createdAt,
+    });
+    await db.sessions.add({
+      id: 'session-1', workoutDayId: 'day-1', performedAt: createdAt, status: 'completed', createdAt, updatedAt: createdAt,
+    });
+    await db.auditEvents.add({
+      id: 'audit-1', occurredAt: createdAt, actor: 'user', entityType: 'session', entityId: 'session-1', action: 'created', payload: {},
+    });
+
+    await clearLocalData();
+
+    expect(await db.exercises.count()).toBe(0);
+    expect(await db.sessions.count()).toBe(0);
+    expect(await db.auditEvents.count()).toBe(0);
   });
 
   it('defaults usedWeight to null for imported set results that do not include it', async () => {

@@ -1,5 +1,5 @@
 import type { BackupPayload, WorkoutSessionStatus } from '../../db/types';
-import { exportBackup, importBackup } from '../../db/repositories';
+import { clearLocalData, exportBackup, importBackup } from '../../db/repositories';
 import { useState } from 'react';
 import { parseCsv, toCsv } from './exportCsv';
 import { getDefaultRestSeconds, setDefaultRestSeconds } from './restDuration';
@@ -57,7 +57,7 @@ export function SettingsPage() {
       title: 'Privaatsus',
       content: [
         'Rakendus ei kogu, ei analüüsi ega saada sinu treeningandmeid kuhugi serverisse.',
-        'Kõik andmed salvestatakse ainult sinu enda telefoni või brauseri kohalikku IndexedDB andmebaasi.',
+        'Kõik andmed salvestatakse ainult selles seadmes ja brauseris kohalikku IndexedDB andmebaasi.',
         'Andmed liiguvad seadmest välja ainult siis, kui sina ise kasutad ekspordi või varunduse funktsioone.',
       ],
     },
@@ -74,8 +74,9 @@ export function SettingsPage() {
       content: [
         'Lisa esmalt Kavad lehel baasharjutused ja treeningpäevad.',
         'Seo harjutused päevadega ja määra seeriate arv, kordused või kestus ning raskus.',
+        'Päevakava-harjutuse juures saad määrata puhkeaja, raskussammu ja mitu edukat treeningut on vaja enne automaatset progressiooni.',
         'Treeningu lehel vali päev, alusta trenni ja märgi iga seeria eraldi tehtuks või ebaõnnestunuks.',
-        'Kui vaja, saad aktiivse harjutuse ajal muuta raskust ja järgmised seeriad kasutavad uut raskust kohe.',
+        'Kui vaja, saad aktiivse harjutuse ajal +/- nuppudega muuta raskust ja järgmised seeriad kasutavad uut raskust kohe.',
       ],
     },
     {
@@ -84,12 +85,14 @@ export function SettingsPage() {
         'Ekspordi varundus loob ühe täieliku JSON faili kogu andmestikust.',
         'Ekspordi CSV salvestab tabelid eraldi failidena arvutis vaatamiseks või muutmiseks.',
         'Impordi varundus või Impordi CSV kirjutab telefoni lokaalsed andmed vastava failiga üle.',
+        'Õnnestunud impordi või ekspordi järel näitab rakendus kinnitust.',
       ],
     },
     {
       title: 'Tõrkeotsing',
       content: [
         'Kui telefonis ei paista uus versioon, vaata Seaded lehelt buildi numbrit ja ava rakendus uuesti brauseris.',
+        'Versioon tähistab väljalaset ja buildinumber sulgudes konkreetset koodimuudatust.',
         'Kui andmed kaovad, taasta need eelnevalt eksporditud JSON või CSV failidest.',
         'Kui iPhone ei paku paigaldust, kontrolli et kasutad Safarit ja HTTPS aadressi.',
       ],
@@ -330,6 +333,23 @@ export function SettingsPage() {
                 }}
               />
             </label>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={async () => {
+                const confirmed = window.confirm(
+                  'Kas kustutada kõik selles seadmes ja brauseris olevad treeningandmed? Seda ei saa tagasi võtta. Enne jätkamist ekspordi soovi korral JSON-varundus.',
+                );
+                if (!confirmed) {
+                  return;
+                }
+
+                await clearLocalData();
+                setDataFeedback('Kõik lokaalsed andmed on kustutatud');
+              }}
+            >
+              Kustuta kõik lokaalsed andmed
+            </button>
             {dataFeedback ? <p role="status" className="muted">{dataFeedback}</p> : null}
           </div>
         </article>

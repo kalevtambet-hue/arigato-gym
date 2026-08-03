@@ -69,6 +69,40 @@ export async function ensureSeedData() {
   });
 }
 
+export async function clearLocalData() {
+  await db.transaction(
+    'rw',
+    [
+      db.progressionTargetGroups,
+      db.auditEvents,
+      db.setResultRevisions,
+      db.sessionSnapshots,
+      db.exerciseEvents,
+      db.setResults,
+      db.sessionExercises,
+      db.sessions,
+      db.dayExercises,
+      db.workoutDays,
+      db.exercises,
+    ],
+    async () => {
+      await Promise.all([
+        db.progressionTargetGroups.clear(),
+        db.auditEvents.clear(),
+        db.setResultRevisions.clear(),
+        db.sessionSnapshots.clear(),
+        db.exerciseEvents.clear(),
+        db.setResults.clear(),
+        db.sessionExercises.clear(),
+        db.sessions.clear(),
+        db.dayExercises.clear(),
+        db.workoutDays.clear(),
+        db.exercises.clear(),
+      ]);
+    },
+  );
+}
+
 export async function exportBackup(): Promise<BackupPayload> {
   const [
     exercises,
