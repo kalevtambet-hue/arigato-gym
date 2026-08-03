@@ -51,6 +51,7 @@ export function SettingsPage() {
   const [themePreference, setThemePreferenceState] = useState(getThemePreference);
   const [defaultRestSeconds, setDefaultRestSecondsState] = useState(getDefaultRestSeconds);
   const [defaultRestDurationDraft, setDefaultRestDurationDraft] = useState(() => String(getDefaultRestSeconds()));
+  const [dataFeedback, setDataFeedback] = useState('');
   const helpSections = [
     {
       title: 'Privaatsus',
@@ -277,6 +278,7 @@ export function SettingsPage() {
               onClick={async () => {
                 const payload = await exportBackup();
                 downloadText('treeninguabiline-varundus.json', JSON.stringify(payload, null, 2), 'application/json');
+                setDataFeedback('Varunduse eksport õnnestus');
               }}
             >
               Ekspordi varundus
@@ -293,6 +295,7 @@ export function SettingsPage() {
                 downloadText('sessiooni-harjutused.csv', toCsv(payload.sessionExercises), 'text/csv');
                 downloadText('seeriad.csv', toCsv(payload.setResults), 'text/csv');
                 downloadText('harjutuse-sundmused.csv', toCsv(payload.exerciseEvents), 'text/csv');
+                setDataFeedback('CSV eksport õnnestus');
               }}
             >
               Ekspordi CSV
@@ -306,6 +309,7 @@ export function SettingsPage() {
                 onChange={async (event) => {
                   await importCsvFiles(event.target.files);
                   event.target.value = '';
+                  setDataFeedback('CSV import õnnestus');
                 }}
               />
             </label>
@@ -322,9 +326,11 @@ export function SettingsPage() {
                   const text = await file.text();
                   await importBackup(JSON.parse(text));
                   event.target.value = '';
+                  setDataFeedback('Varunduse import õnnestus');
                 }}
               />
             </label>
+            {dataFeedback ? <p role="status" className="muted">{dataFeedback}</p> : null}
           </div>
         </article>
 
