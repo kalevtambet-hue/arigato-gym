@@ -1,6 +1,45 @@
 export type RepMode = 'fixed' | 'range' | 'duration-fixed' | 'duration-range';
 
-export type WorkoutSessionStatus = 'active' | 'completed' | 'partial';
+export type WorkoutSessionStatus = 'active' | 'completed' | 'partial' | 'aborted';
+
+export type LoadKind = 'weight' | 'bodyweight' | 'assistance';
+export type ProgressionAxis = 'load' | 'metric' | 'assistance' | 'manual';
+export type SetKind = 'work' | 'warmup' | 'trial' | 'backoff';
+
+export type ProgressionTargetGroupRecord = {
+  id: string;
+  dayExerciseId: string;
+  role: 'primary' | 'related';
+  name: string;
+  metric: 'reps' | 'duration';
+  minimum: number;
+  threshold: number;
+  plannedSets: number;
+  thresholdSetCount: number;
+  loadKind: LoadKind;
+  targetLoadGrams: number | null;
+  availableLoadStepGrams: number;
+  progressionAxis: ProgressionAxis;
+  progressionStep: number;
+  successesBeforeAdvance: number;
+  ceiling: number | null;
+  consecutiveSuccesses: number;
+  relatedToTargetGroupId: string | null;
+  relation: { kind: 'kilograms' | 'percentage'; value: number } | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SetTargetSnapshotRecord = {
+  targetGroupId: string | null;
+  metric: 'reps' | 'duration';
+  minimum: number;
+  threshold: number;
+  loadKind: LoadKind;
+  targetLoadGrams: number | null;
+  thresholdSetCount: number;
+  loadQualification: 'at-least-target' | 'at-most-target-assistance' | 'not-applicable';
+};
 
 export type ExerciseRecord = {
   id: string;
@@ -47,6 +86,10 @@ export type WorkoutSessionRecord = {
   status: WorkoutSessionStatus;
   createdAt: string;
   updatedAt: string;
+  startedAtUtc?: string;
+  endedAtUtc?: string | null;
+  originalTimeZone?: string;
+  bodyweightGrams?: number | null;
 };
 
 export type WorkoutSessionExerciseRecord = {
@@ -76,6 +119,12 @@ export type SetResultRecord = {
   status: 'success' | 'failed';
   completedReps: number;
   usedWeight: number | null;
+  setKind?: SetKind;
+  actualMetricValue?: number | null;
+  actualLoadGrams?: number | null;
+  targetSnapshot?: SetTargetSnapshotRecord | null;
+  skippedReason?: string | null;
+  recordedAt?: string;
 };
 
 export type WorkoutSessionSnapshotRecord = {
@@ -93,7 +142,7 @@ export type SetResultRevisionRecord = {
   setResultId: string;
   revision: number;
   recordedAt: string;
-  reason: 'created' | 'updated' | 'deleted';
+  reason: 'created' | 'updated' | 'voided';
   result: SetResultRecord | null;
 };
 
@@ -101,10 +150,13 @@ export type AuditEventRecord = {
   id: string;
   occurredAt: string;
   actor: 'user' | 'automation';
-  entityType: 'exercise' | 'dayExercise' | 'session' | 'setResult';
+  entityType: 'exercise' | 'dayExercise' | 'targetGroup' | 'session' | 'setResult';
   entityId: string;
   action: string;
   payload: Record<string, unknown>;
+  reason?: string | null;
+  beforeSnapshot?: Record<string, unknown> | null;
+  afterSnapshot?: Record<string, unknown> | null;
 };
 
 export type ExerciseEventField = 'targetSets' | 'targetReps' | 'currentWeight';

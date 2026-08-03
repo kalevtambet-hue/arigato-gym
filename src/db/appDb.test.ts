@@ -54,6 +54,14 @@ describe('AppDb migrations', () => {
       id: 'day-exercise-1',
       exerciseId: 'exercise-1',
     });
+    await legacy.table('setResults').add({
+      id: 'set-1',
+      workoutSessionExerciseId: 'session-exercise-1',
+      setNumber: 1,
+      status: 'success',
+      completedReps: 12,
+      usedWeight: 40,
+    });
     legacy.close();
 
     await db.open();
@@ -67,8 +75,14 @@ describe('AppDb migrations', () => {
       primaryTargetGroup: '',
       secondaryTargetGroups: [],
     });
+    expect(await db.setResults.get('set-1')).toMatchObject({
+      setKind: 'work',
+      actualMetricValue: 12,
+      actualLoadGrams: 40_000,
+      targetSnapshot: null,
+    });
     expect(db.tables.map((table) => table.name)).toEqual(
-      expect.arrayContaining(['sessionSnapshots', 'setResultRevisions', 'auditEvents']),
+      expect.arrayContaining(['sessionSnapshots', 'setResultRevisions', 'auditEvents', 'progressionTargetGroups']),
     );
   });
 });

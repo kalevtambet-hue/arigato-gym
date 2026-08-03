@@ -36,7 +36,7 @@ describe('evaluateProgression', () => {
     ).toMatchObject({ consecutiveSuccesses: 0, reason: 'advanced', nextTarget: { currentWeight: 45 } });
   });
 
-  it('resets progress when the exercise is skipped', () => {
+  it('keeps the streak unchanged when the whole exercise is skipped', () => {
     expect(
       evaluateProgression({
         target,
@@ -46,7 +46,7 @@ describe('evaluateProgression', () => {
         successfulReps: [],
         skipped: true,
       }),
-    ).toMatchObject({ consecutiveSuccesses: 0, reason: 'skipped', nextTarget: target });
+    ).toMatchObject({ consecutiveSuccesses: 1, reason: 'skipped', nextTarget: target });
   });
 
   it('resets progress when only part of the exercise was completed', () => {
@@ -74,7 +74,7 @@ describe('evaluateProgression', () => {
     ).toMatchObject({ consecutiveSuccesses: 0, reason: 'manual-change', nextTarget: target });
   });
 
-  it('freezes the target at its configured weight ceiling', () => {
+  it('clamps the next target to its configured weight ceiling', () => {
     expect(
       evaluateProgression({
         target,
@@ -84,6 +84,11 @@ describe('evaluateProgression', () => {
         successfulReps: [12, 12, 12],
         maxWeight: 40,
       }),
-    ).toMatchObject({ consecutiveSuccesses: 0, reason: 'ceiling', frozen: true, nextTarget: target });
+    ).toMatchObject({
+      consecutiveSuccesses: 0,
+      reason: 'ceiling',
+      frozen: true,
+      nextTarget: { currentWeight: 40 },
+    });
   });
 });

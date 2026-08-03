@@ -298,6 +298,21 @@ describe('HistoryPage', () => {
     expect(await screen.findByTestId(`history-exercise-${sessionExerciseId}`)).not.toHaveClass('history-item-failed');
   });
 
+  it('labels an aborted session without treating its incomplete exercise as a failure', async () => {
+    const timestamp = nowIso();
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+    await db.sessions.add({ id: sessionId, workoutDayId: createId('day'), performedAt: timestamp, status: 'aborted', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({ id: sessionExerciseId, workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseName: 'Chest Press', machineNumber: '12', targetSets: 3, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, orderIndex: 0 });
+
+    render(<MemoryRouter><HistoryPage /></MemoryRouter>);
+
+    const details = await screen.findByTestId(`history-session-${sessionId}`);
+    expect(details).toHaveTextContent('Katkestatud');
+    details.setAttribute('open', '');
+    expect(await screen.findByTestId(`history-exercise-${sessionExerciseId}`)).not.toHaveClass('history-item-failed');
+  });
+
   it('filters same-named snapshots by their exact exercise identity', async () => {
     const timestamp = nowIso();
     await db.exercises.bulkAdd([
