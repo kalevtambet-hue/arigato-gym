@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import styles from '../../styles.css?raw';
 import { db } from '../../db/appDb';
 import { createId } from '../../lib/id';
 import { WorkoutPage } from './WorkoutPage';
@@ -448,6 +449,10 @@ describe('WorkoutPage', () => {
     expect(screen.getByLabelText('Tegelikud kordused')).toBeInTheDocument();
     expect(workoutCard).toContainElement(screen.getByLabelText('Tegelikud kordused'));
     expect(screen.queryByText('Ebaõnnestunud seeria')).not.toBeInTheDocument();
+  });
+
+  it('does not override successful and failed set-dot colors with the pending color', () => {
+    expect(styles).not.toMatch(/\.set-dot\s*,\s*\.set-dot-pending\s*\{/);
   });
 
   it('shows set progress dots for pending, successful and failed sets', async () => {
