@@ -785,7 +785,6 @@ textarea {
   color: var(--accent-text);
 }
 
-.set-dot,
 .set-dot-pending {
   background: var(--pending);
   border-color: var(--border);
