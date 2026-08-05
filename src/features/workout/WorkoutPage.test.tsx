@@ -336,6 +336,12 @@ describe('WorkoutPage', () => {
     expect(await screen.findByRole('button', { name: 'Alusta treeningut' })).toBeInTheDocument();
   });
 
+  it('links from the workout view to day management', async () => {
+    render(<WorkoutPage />);
+
+    expect(await screen.findByRole('link', { name: 'Halda päevi' })).toHaveAttribute('href', '/kavad');
+  });
+
   it('creates starter workout days automatically for a new user', async () => {
     render(<WorkoutPage />);
 
