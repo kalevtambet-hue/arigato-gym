@@ -960,11 +960,16 @@ export function WorkoutPage() {
       {!activeSession ? (
         <>
           {workoutDays?.length === 0 ? (
-            <p className="empty-card">Lisa esmalt treeningpäevad ja harjutused Kavad lehel.</p>
+            <p className="empty-card">
+              Lisa esmalt treeningpäevad ja harjutused. <a href="/kavad">Halda päevi</a>
+            </p>
           ) : (
             <>
               <div className="panel">
-                <p className="eyebrow">Valitud päev</p>
+                <div className="config-head">
+                  <p className="eyebrow">Valitud päev</p>
+                  <a className="secondary-link" href="/kavad">Halda päevi</a>
+                </div>
                 <div className="day-tabs">
                   {(workoutDays ?? []).map((day) => (
                     <button
