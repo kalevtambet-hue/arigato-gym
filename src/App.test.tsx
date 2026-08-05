@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 import App from './App';
@@ -16,9 +16,9 @@ describe('App shell', () => {
     );
 
     expect(screen.getByRole('link', { name: 'Treening' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Kavad' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Harjutused' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ajalugu' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Rohkem' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Seaded' })).toBeInTheDocument();
   });
 
   it('routes More to accessible links for exercises and settings', async () => {
@@ -29,8 +29,9 @@ describe('App shell', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Rohkem' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Harjutused/i })).toHaveAttribute('href', '/harjutused');
-    expect(screen.getByRole('link', { name: /Seaded/i })).toHaveAttribute('href', '/seaded');
+    const main = screen.getByRole('main');
+    expect(within(main).getByRole('link', { name: /Harjutused/i })).toHaveAttribute('href', '/harjutused');
+    expect(within(main).getByRole('link', { name: /Seaded/i })).toHaveAttribute('href', '/seaded');
   });
 
   it('routes the root path to Treening by default', async () => {

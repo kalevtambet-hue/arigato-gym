@@ -4,9 +4,9 @@ import { db } from '../db/appDb';
 
 const items = [
   { to: '/treening', label: 'Treening' },
-  { to: '/kavad', label: 'Kavad' },
+  { to: '/harjutused', label: 'Harjutused' },
   { to: '/ajalugu', label: 'Ajalugu' },
-  { to: '/rohkem', label: 'Rohkem' },
+  { to: '/seaded', label: 'Seaded' },
 ];
 
 export function BottomNav() {

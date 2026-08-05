@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../../db/appDb';
 import type { ExerciseRecord } from '../../db/types';
+import { formatTarget } from '../../domain/targetMode';
 import { createId } from '../../lib/id';
 import { ExerciseForm } from './ExerciseForm';
 
@@ -10,6 +11,38 @@ function nowIso() { return new Date().toISOString(); }
 
 export function ExercisesListPage() {
   const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), []);
+  const exerciseContext = useLiveQuery(async () => {
+    const [dayExercises, sessions, sessionExercises, setResults] = await Promise.all([
+      db.dayExercises.toArray(),
+      db.sessions.toArray(),
+      db.sessionExercises.toArray(),
+      db.setResults.toArray(),
+    ]);
+    const sessionById = new Map(sessions.map((session) => [session.id, session]));
+    const resultsBySessionExerciseId = new Map<string, typeof setResults>();
+    for (const result of setResults) {
+      const list = resultsBySessionExerciseId.get(result.workoutSessionExerciseId) ?? [];
+      list.push(result);
+      resultsBySessionExerciseId.set(result.workoutSessionExerciseId, list);
+    }
+
+    const latestByExerciseId = new Map<string, (typeof sessionExercises)[number]>();
+    for (const sessionExercise of sessionExercises) {
+      if (!sessionExercise.exerciseId || sessionById.get(sessionExercise.workoutSessionId)?.status === 'active') continue;
+      const currentLatest = latestByExerciseId.get(sessionExercise.exerciseId);
+      const currentDate = currentLatest ? sessionById.get(currentLatest.workoutSessionId)?.performedAt ?? '' : '';
+      const candidateDate = sessionById.get(sessionExercise.workoutSessionId)?.performedAt ?? '';
+      if (!currentLatest || candidateDate > currentDate) latestByExerciseId.set(sessionExercise.exerciseId, sessionExercise);
+    }
+
+    const planByExerciseId = new Map<string, (typeof dayExercises)[number]>();
+    for (const dayExercise of dayExercises) {
+      const currentPlan = planByExerciseId.get(dayExercise.exerciseId);
+      if (!currentPlan || dayExercise.updatedAt > currentPlan.updatedAt) planByExerciseId.set(dayExercise.exerciseId, dayExercise);
+    }
+
+    return { latestByExerciseId, planByExerciseId, resultsBySessionExerciseId };
+  }, []);
   const [search, setSearch] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const visibleExercises = (exercises ?? []).filter((exercise) =>
@@ -35,12 +68,21 @@ export function ExercisesListPage() {
       </label>
     </div>
     <ul className="stack-list">
-      {visibleExercises.map((exercise: ExerciseRecord) => <li key={exercise.id} className="list-card">
-        <Link className="day-link" to={`/harjutused/${exercise.id}`}>
-          <strong>{exercise.name}</strong>
-          <span>Masin #{exercise.machineNumber || '-'}</span>
-        </Link>
-      </li>)}
+      {visibleExercises.map((exercise: ExerciseRecord) => {
+        const latest = exerciseContext?.latestByExerciseId.get(exercise.id);
+        const latestResults = latest ? exerciseContext?.resultsBySessionExerciseId.get(latest.id) ?? [] : [];
+        const successfulSets = latestResults.filter((result) => result.status === 'success').length;
+        const plan = exerciseContext?.planByExerciseId.get(exercise.id);
+
+        return <li key={exercise.id} className="list-card exercise-list-card">
+          <Link className="day-link" to={`/harjutused/${exercise.id}`}>
+            <strong>{exercise.name}</strong>
+            <span>Masin #{exercise.machineNumber || '-'}</span>
+            {latest ? <span>Viimane: {latest.currentWeight} kg · {successfulSets}/{latest.targetSets} tehtud</span> : <span>Viimane treening puudub</span>}
+            {plan ? <span>Järgmine siht: {plan.targetSets} × {formatTarget(plan.repMode, plan.targetRepsMin, plan.targetRepsMax, plan.currentWeight)}</span> : <span>Järgmine siht puudub</span>}
+          </Link>
+        </li>;
+      })}
       {exercises?.length === 0 ? <li className="empty-card">Harjutusi veel ei ole.</li> : null}
       {exercises && exercises.length > 0 && visibleExercises.length === 0 ? <li className="empty-card">Otsing ei andnud tulemusi.</li> : null}
     </ul>

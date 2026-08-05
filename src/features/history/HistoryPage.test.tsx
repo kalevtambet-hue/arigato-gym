@@ -92,6 +92,7 @@ describe('HistoryPage', () => {
     const details = await screen.findByTestId(`history-session-${sessionId}`);
     expect(details).not.toHaveAttribute('open');
     expect(screen.getByText('1/1 edukat')).toBeInTheDocument();
+    expect(screen.getByText('✓ õnnestus')).toBeInTheDocument();
   });
 
   it('marks unfinished exercises in red', async () => {

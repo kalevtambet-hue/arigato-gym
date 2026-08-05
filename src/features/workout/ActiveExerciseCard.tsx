@@ -1,4 +1,4 @@
-import type { RepMode, WorkoutSessionExerciseRecord } from '../../db/types';
+import type { RepMode, SetResultRecord, WorkoutSessionExerciseRecord } from '../../db/types';
 import { formatTarget, isDurationMode } from '../../domain/targetMode';
 import {
   clampRepValue,
@@ -12,6 +12,7 @@ type ActiveExerciseCardProps = {
   exercise: WorkoutSessionExerciseRecord;
   setNumber: number;
   setStates: SetState[];
+  setResults?: SetResultRecord[];
   selectedReps: number;
   onWeightChange: (weight: number) => void;
   onRepsChange: (reps: number) => void;
@@ -27,6 +28,7 @@ export function ActiveExerciseCard({
   exercise,
   setNumber,
   setStates,
+  setResults = [],
   selectedReps,
   onWeightChange,
   onRepsChange,
@@ -40,6 +42,8 @@ export function ActiveExerciseCard({
   );
   const fixedReps = isFixedMode(exercise.repMode);
   const durationMode = isDurationMode(exercise.repMode);
+  const resultsBySet = new Map(setResults.map((result) => [result.setNumber, result]));
+  const unit = durationMode ? 'min' : 'kordust';
 
   return (
     <article className="workout-card active-exercise-card" data-testid="active-workout-card">
@@ -118,6 +122,26 @@ export function ActiveExerciseCard({
             onClick={() => onSetClick?.(index + 1)}
           />
         ))}
+      </div>
+      <div className="set-status-list" aria-label="Seeriate üksikasjad">
+        {setStates.map((state, index) => {
+          const number = index + 1;
+          const result = resultsBySet.get(number);
+          const value = result?.completedReps ?? repStepper.targetValue;
+          const status = state === 'success' ? '✓ tehtud' : state === 'failed' ? '✕ puudu' : number === setNumber ? 'sinu kord' : 'ootel';
+
+          return (
+            <button
+              type="button"
+              key={`${exercise.id}-set-status-${number}`}
+              className={`set-status-row set-status-${state}${state === 'pending' && number === setNumber ? ' set-status-current' : ''}`}
+              disabled={state === 'pending'}
+              onClick={() => onSetClick?.(number)}
+            >
+              {`Seeria ${number} · ${value} ${unit} · ${status}`}
+            </button>
+          );
+        })}
       </div>
       <p className="progression-copy">
         {getProgressionRecommendationCopy(exercise)}
