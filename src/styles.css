@@ -384,6 +384,39 @@ textarea {
   flex-wrap: wrap;
 }
 
+.set-status-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.set-status-row {
+  width: 100%;
+  min-height: 2.8rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-subtle);
+  color: var(--text);
+  text-align: left;
+}
+
+.set-status-row:disabled {
+  cursor: default;
+}
+
+.set-status-success {
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.set-status-failed {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.set-status-current {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.1);
+}
+
 .set-dot {
   width: 3rem;
   min-width: 3rem;
@@ -681,6 +714,18 @@ textarea {
   color: #fecaca;
 }
 
+.history-result-success {
+  color: #86efac !important;
+}
+
+.history-result-failed {
+  color: #fecaca !important;
+}
+
+.history-result-pending {
+  color: var(--text-muted) !important;
+}
+
 @media (max-width: 640px) {
   .app-shell {
     padding-bottom: 10.2rem;
@@ -691,8 +736,8 @@ textarea {
   }
 
   .topbar h1 {
-    font-size: 2.15rem;
-    line-height: 1.02;
+    font-size: 1.6rem;
+    line-height: 1.15;
   }
 
   .page-shell {

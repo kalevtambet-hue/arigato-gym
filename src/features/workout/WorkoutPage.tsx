@@ -1022,6 +1022,7 @@ export function WorkoutPage() {
             exercise={nextExercise}
             setNumber={nextSetNumber}
             setStates={nextExerciseSetStates}
+            setResults={nextExerciseResults}
             selectedReps={selectedReps ?? getSuccessValue(nextExercise.repMode, nextExercise.targetRepsMin, nextExercise.targetRepsMax)}
             onRepsChange={setSelectedReps}
             onWeightChange={(weight) =>

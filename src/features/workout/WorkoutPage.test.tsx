@@ -503,12 +503,14 @@ describe('WorkoutPage', () => {
 
     expect(await screen.findByTestId('set-dot-1')).toHaveClass('set-dot-pending');
     expect(getDots()).toHaveLength(3);
+    expect(screen.getByText('Seeria 1 · 15 kordust · sinu kord')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Tehtud' }));
     await waitFor(() => {
       expect(screen.getByTestId('set-dot-1')).toHaveClass('set-dot-success');
     });
     expect(screen.getByTestId('set-dot-2')).toHaveClass('set-dot-pending');
+    expect(screen.getByText('Seeria 1 · 15 kordust · ✓ tehtud')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Ei tulnud täis' }));
     await user.type(screen.getByLabelText('Tegelikud kordused'), '8');
@@ -523,6 +525,7 @@ describe('WorkoutPage', () => {
       )?.completedReps,
     ).toBe(8);
     expect(screen.getByTestId('set-dot-3')).toHaveClass('set-dot-pending');
+    expect(screen.getByText('Seeria 2 · 8 kordust · ✕ puudu')).toBeInTheDocument();
   });
 
   it('prioritizes the main set actions and lets the user undo the latest set', async () => {

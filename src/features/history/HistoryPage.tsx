@@ -140,6 +140,9 @@ export function HistoryPage() {
                     {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}
                   </span>
                   <span>{item.reps || 'Seeriad puuduvad'}</span>
+                  <span className={item.isComplete ? 'history-result-success' : item.isFailed ? 'history-result-failed' : 'history-result-pending'}>
+                    {item.isComplete ? '✓ õnnestus' : item.isFailed ? '✕ jäi puudu' : '○ pooleli'}
+                  </span>
                 </li>
               ))}
               {exercises.length === 0 ? <li className="empty-card">Filter ei andnud tulemusi.</li> : null}
