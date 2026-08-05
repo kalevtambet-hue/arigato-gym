@@ -220,7 +220,7 @@ export function SettingsPage() {
   };
 
   return (
-    <section className="page">
+    <section className="page settings-page">
       <div className="section-header">
         <div>
           <p className="eyebrow">Varukoopia ja PWA</p>
@@ -228,7 +228,7 @@ export function SettingsPage() {
         </div>
       </div>
       <div className="stack">
-        <article className="panel">
+        <article className="panel settings-card compact-panel">
           <h3>Välimus</h3>
           <label>
             Välimus
@@ -243,7 +243,7 @@ export function SettingsPage() {
             </select>
           </label>
         </article>
-        <article className="panel">
+        <article className="panel settings-card compact-panel">
           <h3>Treening</h3>
           <label>
             Vaikimisi puhkeaeg (sek)
@@ -272,9 +272,9 @@ export function SettingsPage() {
             />
           </label>
         </article>
-        <article className="panel">
+        <article className="panel settings-card compact-panel">
           <h3>Andmed</h3>
-          <div className="button-stack">
+          <div className="button-stack compact-button-stack">
             <button
               type="button"
               className="primary-button"
@@ -354,7 +354,7 @@ export function SettingsPage() {
           </div>
         </article>
 
-        <article className="panel">
+        <article className="panel settings-card compact-panel">
           <h3>PWA</h3>
           <p className="muted">
             Rakendus on installitav brauseri menust. Pärast esmast avamist töötab see ka ilma internetita.
@@ -362,7 +362,7 @@ export function SettingsPage() {
           <p className="muted">{versionLabel}</p>
         </article>
 
-        <article className="panel">
+        <article className="panel settings-card compact-panel">
           <h3>Abi</h3>
           <div className="stack help-accordion">
             {helpSections.map((section) => (

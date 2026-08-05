@@ -43,4 +43,26 @@ describe('App shell', () => {
 
     expect(await screen.findByText('Valitud päev')).toBeInTheDocument();
   });
+
+  it('shows the global brand header only on the workout home view', async () => {
+    render(
+      <MemoryRouter initialEntries={['/treening']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Treeninguabiline' })).toBeInTheDocument();
+    expect(screen.getByText('Offline-first PWA')).toBeInTheDocument();
+
+    cleanup();
+    render(
+      <MemoryRouter initialEntries={['/harjutused']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Harjutused' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Treeninguabiline' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Offline-first PWA')).not.toBeInTheDocument();
+  });
 });

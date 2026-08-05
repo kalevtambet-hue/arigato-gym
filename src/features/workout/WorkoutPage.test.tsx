@@ -333,13 +333,16 @@ describe('WorkoutPage', () => {
     expect(await screen.findByText('Õlale rahulik tempo')).toBeInTheDocument();
     expect(screen.getByText('Päeva harjutused')).toBeInTheDocument();
     expect(await screen.findByText('Chest Press')).toBeInTheDocument();
+    expect(screen.queryByText('Masin #12')).not.toBeInTheDocument();
+    expect(screen.queryByText('3 x 10-15 x 60 kg')).not.toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Alusta treeningut' })).toBeInTheDocument();
   });
 
-  it('links from the workout view to day management', async () => {
+  it('keeps day management out of the pre-workout day picker', async () => {
     render(<WorkoutPage />);
 
-    expect(await screen.findByRole('link', { name: 'Halda päevi' })).toHaveAttribute('href', '/kavad');
+    expect(await screen.findByText('Valitud päev')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Halda päevi' })).not.toBeInTheDocument();
   });
 
   it('creates starter workout days automatically for a new user', async () => {

@@ -100,14 +100,14 @@ export function HistoryPage() {
   }, [sessions, sessionExercises, setResults, exerciseFilter, exerciseId]);
 
   return (
-    <section className="page">
+    <section className="page history-page">
       <div className="section-header">
         <div>
           <p className="eyebrow">Minevik</p>
           <h2>Ajalugu</h2>
         </div>
       </div>
-      <div className="panel">
+      <div className="panel search-panel compact-panel">
         <label>
           Filtreeri harjutuse järgi
           <input value={exerciseFilter} onChange={(event) => setExerciseFilter(event.target.value)} />
@@ -116,7 +116,7 @@ export function HistoryPage() {
       {exerciseId && selectedExercise === null ? <p className="empty-card">Valitud harjutust ei leitud.</p> : null}
       <div className="stack">
         {items.map(({ session, exercises, completedExercises }) => (
-          <details key={session.id} className="panel history-session" data-testid={`history-session-${session.id}`}>
+          <details key={session.id} className="panel history-session compact-panel" data-testid={`history-session-${session.id}`}>
             <summary className="history-summary">
               <strong>{new Date(session.performedAt).toLocaleDateString('et-EE')}</strong>
               <span>
@@ -131,7 +131,7 @@ export function HistoryPage() {
               {exercises.map((item) => (
                 <li
                   key={item.id}
-                  className={item.isFailed ? 'list-card history-item-failed' : 'list-card'}
+                  className={item.isFailed ? 'list-card history-item-failed compact-list-card' : 'list-card compact-list-card'}
                   data-testid={`history-exercise-${item.id}`}
                 >
                   <strong>{item.exerciseName}</strong>

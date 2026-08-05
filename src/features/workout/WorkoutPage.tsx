@@ -937,7 +937,7 @@ export function WorkoutPage() {
   }
 
   return (
-    <section className="page">
+    <section className="page workout-page">
       <div className="section-header">
         <div>
           <p className="eyebrow">Tänane logi</p>
@@ -946,7 +946,7 @@ export function WorkoutPage() {
       </div>
 
       {activeSession && progress.totalExercises > 0 ? (
-        <div className="panel progress-panel">
+          <div className="panel progress-panel compact-panel">
           <div className="config-head">
             <strong>{`Tehtud ${progress.completedExercises} / ${progress.totalExercises}`}</strong>
             <span>{`Jäänud ${progress.remainingExercises}`}</span>
@@ -961,15 +961,12 @@ export function WorkoutPage() {
         <>
           {workoutDays?.length === 0 ? (
             <p className="empty-card">
-              Lisa esmalt treeningpäevad ja harjutused. <a href="/kavad">Halda päevi</a>
+              Lisa esmalt Harjutused lehel treeningpäevad ja harjutused.
             </p>
           ) : (
             <>
-              <div className="panel">
-                <div className="config-head">
-                  <p className="eyebrow">Valitud päev</p>
-                  <a className="secondary-link" href="/kavad">Halda päevi</a>
-                </div>
+              <div className="panel day-picker-panel compact-panel">
+                <p className="eyebrow">Valitud päev</p>
                 <div className="day-tabs">
                   {(workoutDays ?? []).map((day) => (
                     <button
@@ -985,12 +982,17 @@ export function WorkoutPage() {
                 {selectedDay?.notes ? <p className="muted note-copy">{selectedDay.notes}</p> : null}
               </div>
 
-              <div className="panel">
-                <p className="eyebrow">Päeva harjutused</p>
+              <div className="panel exercise-preview-panel compact-panel">
+                <div className="config-head">
+                  <p className="eyebrow">Päeva harjutused</p>
+                  {selectedDayExercises.length > 0 ? (
+                    <span className="muted">{selectedDayExercises.length} harjutust</span>
+                  ) : null}
+                </div>
                 {selectedDayExercises.length === 0 ? null : (
                   <button
                     type="button"
-                    className="hero-button"
+                    className="primary-button compact-start-button"
                     onClick={() => {
                       if (selectedDay) {
                         void startWorkout(selectedDay.id);
@@ -1002,13 +1004,8 @@ export function WorkoutPage() {
                 )}
                 <ul className="stack-list preview-list">
                   {selectedDayExercises.map((item) => (
-                    <li key={item.id} className="list-card">
+                    <li key={item.id} className="list-card workout-preview-card">
                       <strong>{item.exercise?.name ?? 'Harjutus'}</strong>
-                      <span>Masin #{item.exercise?.machineNumber || '-'}</span>
-                      <span>
-                        {item.targetSets} x{' '}
-                        {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}
-                      </span>
                     </li>
                   ))}
                 </ul>
@@ -1366,7 +1363,7 @@ export function WorkoutPage() {
               </div>
             ) : null}
             {failureTarget?.sessionExerciseId === nextExercise.id ? (
-              <div className="inline-failure-form">
+              <div className="inline-failure-form quick-failure-form">
                 <label htmlFor="completedReps">
                   {failureExercise && isDurationMode(failureExercise.repMode)
                     ? 'Tegelik kestus (min)'

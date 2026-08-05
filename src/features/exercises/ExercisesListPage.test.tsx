@@ -36,6 +36,7 @@ describe('ExercisesListPage', () => {
 
     render(<MemoryRouter><ExercisesListPage /></MemoryRouter>);
 
+    expect(await screen.findByRole('link', { name: 'Halda päevi' })).toHaveAttribute('href', '/kavad');
     expect(await screen.findByText('Viimane: 60 kg · 3/3 tehtud')).toBeInTheDocument();
     expect(screen.getByText('Järgmine siht: 3 × 10-15 x 65 kg')).toBeInTheDocument();
   });

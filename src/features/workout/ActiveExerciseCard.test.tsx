@@ -56,6 +56,24 @@ describe('ActiveExerciseCard', () => {
     expect(onRepsChange).toHaveBeenNthCalledWith(2, 9);
   });
 
+  it('groups the active workout essentials into a compact training header', () => {
+    render(
+      <ActiveExerciseCard
+        exercise={rangeExercise}
+        setNumber={2}
+        setStates={['success', 'pending', 'pending']}
+        selectedReps={8}
+        onWeightChange={vi.fn()}
+        onRepsChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('active-workout-header')).toHaveTextContent('Leg Press');
+    expect(screen.getByTestId('active-workout-header')).toHaveTextContent('Masin #7');
+    expect(screen.getByTestId('active-target-line')).toHaveTextContent('3 x 8-12 x 50 kg');
+    expect(screen.getByTestId('active-control-grid')).toBeInTheDocument();
+  });
+
   it('keeps fixed repetition targets fixed and never proposes negative weight', async () => {
     const user = userEvent.setup();
     const onWeightChange = vi.fn();
