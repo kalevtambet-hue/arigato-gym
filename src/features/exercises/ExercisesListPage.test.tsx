@@ -42,6 +42,24 @@ describe('ExercisesListPage', () => {
     expect(screen.getByText('Järgmine siht: 3 × 10-15 x 65 kg')).toBeInTheDocument();
   });
 
+  it('shows an unspecified target when progression requirements are disabled', async () => {
+    const timestamp = new Date().toISOString();
+    await db.exercises.bulkAdd([
+      { id: 'successes-zero', name: 'Kükk', machineNumber: '', notes: '', createdAt: timestamp, updatedAt: timestamp },
+      { id: 'step-zero', name: 'Jõutõmme', machineNumber: '', notes: '', createdAt: timestamp, updatedAt: timestamp },
+    ]);
+    await db.dayExercises.bulkAdd([
+      { id: 'plan-successes-zero', workoutDayId: 'day', exerciseId: 'successes-zero', sortOrder: 0, targetSets: 3, successesRequired: 0, repMode: 'range', targetRepsMin: 8, targetRepsMax: 12, currentWeight: 60, weightStep: 5, restSeconds: 60, createdAt: timestamp, updatedAt: timestamp },
+      { id: 'plan-step-zero', workoutDayId: 'day', exerciseId: 'step-zero', sortOrder: 1, targetSets: 3, successesRequired: 2, repMode: 'range', targetRepsMin: 8, targetRepsMax: 12, currentWeight: 80, weightStep: 0, restSeconds: 60, createdAt: timestamp, updatedAt: timestamp },
+    ]);
+
+    render(<MemoryRouter><ExercisesListPage /></MemoryRouter>);
+
+    expect((await screen.findAllByText('Siht määramata')).length).toBe(2);
+    expect(screen.queryByText('Järgmine siht: 3 × 8-12 x 60 kg')).not.toBeInTheDocument();
+    expect(screen.queryByText('Järgmine siht: 3 × 8-12 x 80 kg')).not.toBeInTheDocument();
+  });
+
   it('shows a clear empty state with an action to add the first exercise', async () => {
     render(<MemoryRouter><ExercisesListPage /></MemoryRouter>);
 

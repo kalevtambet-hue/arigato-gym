@@ -81,7 +81,7 @@ export function ExercisesListPage() {
             <strong>{exercise.name}</strong>
             <span className="exercise-meta">Masin #{exercise.machineNumber || '-'}</span>
             {latest ? <span className="exercise-result">Viimane: {latest.currentWeight} kg · {successfulSets}/{latest.targetSets} tehtud</span> : <span className="exercise-result">Viimane treening puudub</span>}
-            {plan ? <span className="exercise-target">Järgmine siht: {plan.targetSets} × {formatTarget(plan.repMode, plan.targetRepsMin, plan.targetRepsMax, plan.currentWeight)}</span> : <span className="exercise-target">Järgmine siht puudub</span>}
+            {plan ? <span className="exercise-target">{plan.successesRequired === 0 || plan.weightStep === 0 ? 'Siht määramata' : `Järgmine siht: ${plan.targetSets} × ${formatTarget(plan.repMode, plan.targetRepsMin, plan.targetRepsMax, plan.currentWeight)}`}</span> : <span className="exercise-target">Järgmine siht puudub</span>}
           </Link>
         </li>;
       })}
