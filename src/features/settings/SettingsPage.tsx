@@ -363,7 +363,8 @@ export function SettingsPage() {
         </article>
 
         <article className="panel settings-card settings-section compact-panel">
-          <h3>Abi</h3>
+          <h3 className="help-heading">Abi</h3>
+          <p className="muted help-intro">Vali teema, et juhist avada.</p>
           <div className="stack help-accordion">
             {helpSections.map((section) => (
               <details key={section.title} className="help-details">

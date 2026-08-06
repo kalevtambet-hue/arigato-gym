@@ -44,6 +44,8 @@ describe('SettingsPage', () => {
   it('shows collapsible help sections', () => {
     render(<SettingsPage />);
 
+    expect(screen.getByRole('heading', { name: 'Abi' })).toBeInTheDocument();
+    expect(screen.getByText('Vali teema, et juhist avada.')).toBeInTheDocument();
     expect(screen.getByText('Privaatsus')).toBeInTheDocument();
     expect(screen.getByText('Paigaldamine')).toBeInTheDocument();
     expect(screen.getByText('Kasutamine')).toBeInTheDocument();
