@@ -16,7 +16,9 @@ export function Layout() {
         </header>
       ) : null}
       <main className="page-shell">
-        <Outlet />
+        <div className="content-container">
+          <Outlet />
+        </div>
       </main>
       <BottomNav />
     </div>
