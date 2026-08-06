@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev:backup-editor": "vite --config tools/backup-editor/vite.config.ts",
+    "build": "npm run build:backup-editor && tsc -b && vite build && node scripts/publish-backup-editor.mjs",
+    "build:backup-editor": "tsc -p tools/backup-editor/tsconfig.json && vite build --config tools/backup-editor/vite.config.ts",
     "lint": "oxlint .",
     "preview": "vite preview",
     "test": "vitest run"
