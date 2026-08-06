@@ -1146,6 +1146,14 @@ textarea {
   border-top: 1px solid var(--border);
 }
 
+.settings-page .help-heading {
+  margin-bottom: var(--space-1);
+}
+
+.settings-page .help-intro {
+  margin: 0 0 var(--space-3);
+}
+
 .settings-page .help-details {
   border: 0;
   border-bottom: 1px solid var(--border);
