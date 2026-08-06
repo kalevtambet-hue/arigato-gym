@@ -97,7 +97,19 @@ describe('exercise routes', () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: 'Kustuta harjutus' }));
 
-    expect(await screen.findByText('Harjutusi veel ei ole.')).toBeInTheDocument();
+    expect(await screen.findByText('Sul pole veel harjutusi.')).toBeInTheDocument();
     expect(await db.dayExercises.count()).toBe(0);
+  });
+
+  it('keeps an exercise when its named deletion confirmation is cancelled', async () => {
+    await db.exercises.add({ id: 'leg', name: 'Leg Press', machineNumber: '17', notes: '', createdAt: timestamp, updatedAt: timestamp });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    render(<MemoryRouter initialEntries={['/harjutused/leg']}><App /></MemoryRouter>);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Kustuta harjutus' }));
+
+    expect(confirm).toHaveBeenCalledWith('Kustutada harjutus "Leg Press"?');
+    expect(await db.exercises.get('leg')).toBeTruthy();
   });
 });

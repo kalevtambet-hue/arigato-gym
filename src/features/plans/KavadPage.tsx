@@ -33,7 +33,7 @@ export function KavadPage() {
         <h2>Kavad</h2>
         {days?.length ? <p className="page-summary">{days.length} treeningpäeva</p> : null}
       </div>
-      <button type="button" className="primary-button" onClick={() => setFormOpen(true)}>Lisa treeningpäev</button>
+      {days?.length ? <button type="button" className="primary-button" onClick={() => setFormOpen(true)}>Lisa treeningpäev</button> : null}
     </div>
     {formOpen ? <div className="modal-card">
       <h3>Uus treeningpäev</h3>
@@ -51,7 +51,11 @@ export function KavadPage() {
           <span>{day.notes || 'Ava päeva harjutused ja sihid'}</span>
         </Link>
       </li>)}
-      {days?.length === 0 ? <li className="empty-card">Treeningpäevi veel ei ole.</li> : null}
+      {days?.length === 0 ? <li className="empty-card empty-state">
+        <h3>Sul pole veel treeningpäevi.</h3>
+        <p>Loo esimene treeningpäev ja lisa sellele harjutused.</p>
+        <button type="button" className="primary-button" onClick={() => setFormOpen(true)}>Lisa treeningpäev</button>
+      </li> : null}
     </ul>
   </section>;
 }

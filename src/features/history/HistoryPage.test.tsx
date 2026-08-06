@@ -11,6 +11,13 @@ function nowIso() {
 }
 
 describe('HistoryPage', () => {
+  it('explains the empty history state without offering an unrelated action', async () => {
+    render(<MemoryRouter><HistoryPage /></MemoryRouter>);
+
+    expect(await screen.findByText('Ajalugu veel puudub.')).toBeInTheDocument();
+    expect(screen.getByText('Lõpetatud treeningud ilmuvad siia automaatselt.')).toBeInTheDocument();
+  });
+
   beforeEach(async () => {
     await db.transaction(
       'rw',
@@ -91,8 +98,8 @@ describe('HistoryPage', () => {
 
     const details = await screen.findByTestId(`history-session-${sessionId}`);
     expect(details).not.toHaveAttribute('open');
-    expect(screen.getByText('1/1 edukat')).toBeInTheDocument();
-    expect(screen.getByText('✓ õnnestus')).toBeInTheDocument();
+    expect(await screen.findByText('1/1 edukat')).toBeInTheDocument();
+    expect(await screen.findByText('✓ õnnestus')).toBeInTheDocument();
   });
 
   it('marks unfinished exercises in red', async () => {
