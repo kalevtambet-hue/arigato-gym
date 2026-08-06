@@ -945,18 +945,6 @@ export function WorkoutPage() {
         </div>
       </div>
 
-      {activeSession && progress.totalExercises > 0 ? (
-          <div className="panel progress-panel compact-panel">
-          <div className="config-head">
-            <strong>{`Tehtud ${progress.completedExercises} / ${progress.totalExercises}`}</strong>
-            <span>{`Jäänud ${progress.remainingExercises}`}</span>
-          </div>
-          <div className="progress-track" aria-hidden="true">
-            <div className="progress-fill" style={{ width: `${progress.progressPercent}%` }} />
-          </div>
-        </div>
-      ) : null}
-
       {!activeSession ? (
         <>
           {workoutDays?.length === 0 ? (
@@ -1019,8 +1007,9 @@ export function WorkoutPage() {
       ) : null}
 
       {activeSession && nextExercise ? (
-        <>
-          <ActiveExerciseCard
+        <div className="workout-workspace">
+          <div className="workout-primary-column">
+            <ActiveExerciseCard
             exercise={nextExercise}
             setNumber={nextSetNumber}
             setStates={nextExerciseSetStates}
@@ -1462,10 +1451,23 @@ export function WorkoutPage() {
             >
               Katkesta treening
             </button>
-          </ActiveExerciseCard>
+            </ActiveExerciseCard>
+          </div>
 
-          {upcomingExercises.length > 0 ? (
-            <div className="panel">
+          <aside className="workout-secondary-column" aria-label="Treeningu ülevaade">
+            {progress.totalExercises > 0 ? (
+              <div className="panel progress-panel compact-panel">
+                <div className="config-head">
+                  <strong>{`Tehtud ${progress.completedExercises} / ${progress.totalExercises}`}</strong>
+                  <span>{`Jäänud ${progress.remainingExercises}`}</span>
+                </div>
+                <div className="progress-track" aria-hidden="true">
+                  <div className="progress-fill" style={{ width: `${progress.progressPercent}%` }} />
+                </div>
+              </div>
+            ) : null}
+            {upcomingExercises.length > 0 ? (
+              <div className="panel upcoming-panel">
               <p className="eyebrow">Tulemas</p>
               <ul className="stack-list">
                 {upcomingExercises.map((item) => (
@@ -1512,9 +1514,22 @@ export function WorkoutPage() {
                   </li>
                 ))}
               </ul>
-            </div>
-          ) : null}
-        </>
+              </div>
+            ) : null}
+          </aside>
+        </div>
+      ) : null}
+
+      {activeSession && !nextExercise && progress.totalExercises > 0 ? (
+        <div className="panel progress-panel compact-panel">
+          <div className="config-head">
+            <strong>{`Tehtud ${progress.completedExercises} / ${progress.totalExercises}`}</strong>
+            <span>{`Jäänud ${progress.remainingExercises}`}</span>
+          </div>
+          <div className="progress-track" aria-hidden="true">
+            <div className="progress-fill" style={{ width: `${progress.progressPercent}%` }} />
+          </div>
+        </div>
       ) : null}
 
       {activeSession && nextExercise ? (

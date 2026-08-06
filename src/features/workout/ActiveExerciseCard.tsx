@@ -119,20 +119,7 @@ export function ActiveExerciseCard({
         </div>
       </div>
 
-      <div className="set-dots" aria-label="Seeriate seis">
-        {setStates.map((state, index) => (
-          <button
-            type="button"
-            key={`${exercise.id}-set-${index + 1}`}
-            data-testid={`set-dot-${index + 1}`}
-            className={`set-dot set-dot-${state}`}
-            aria-label={`Seeria ${index + 1}: ${state}`}
-            disabled={state === 'pending'}
-            onClick={() => onSetClick?.(index + 1)}
-          />
-        ))}
-      </div>
-      <div className="set-status-list" aria-label="Seeriate üksikasjad">
+      <div className="set-status-list" aria-label="Seeriate seis">
         {setStates.map((state, index) => {
           const number = index + 1;
           const result = resultsBySet.get(number);
@@ -143,7 +130,9 @@ export function ActiveExerciseCard({
             <button
               type="button"
               key={`${exercise.id}-set-status-${number}`}
-              className={`set-status-row set-status-${state}${state === 'pending' && number === setNumber ? ' set-status-current' : ''}`}
+              data-testid={`set-dot-${number}`}
+              className={`set-status-row set-status-${state} set-dot set-dot-${state}${state === 'pending' && number === setNumber ? ' set-status-current' : ''}`}
+              aria-label={`Seeria ${number}: ${state}`}
               disabled={state === 'pending'}
               onClick={() => onSetClick?.(number)}
             >
