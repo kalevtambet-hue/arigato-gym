@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 describe('App shell', () => {
-  it('shows the four main navigation tabs in Estonian', () => {
+  it('shows the five main navigation tabs in Estonian', () => {
     render(
       <MemoryRouter>
         <App />
@@ -16,12 +16,13 @@ describe('App shell', () => {
     );
 
     expect(screen.getByRole('link', { name: 'Treening' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Kavad' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Harjutused' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ajalugu' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Seaded' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Veel' })).toBeInTheDocument();
   });
 
-  it('routes More to accessible links for exercises and settings', async () => {
+  it('routes More to the secondary settings destination', async () => {
     render(
       <MemoryRouter initialEntries={['/rohkem']}>
         <App />
@@ -30,7 +31,6 @@ describe('App shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'Rohkem' })).toBeInTheDocument();
     const main = screen.getByRole('main');
-    expect(within(main).getByRole('link', { name: /Harjutused/i })).toHaveAttribute('href', '/harjutused');
     expect(within(main).getByRole('link', { name: /Seaded/i })).toHaveAttribute('href', '/seaded');
   });
 

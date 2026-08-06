@@ -22,7 +22,7 @@ describe('ExercisesListPage', () => {
 
   afterEach(cleanup);
 
-  it('shows the last completed load and the next plan target for an exercise', async () => {
+  it('shows the last completed load and the next plan target without duplicating plan navigation', async () => {
     const timestamp = new Date().toISOString();
     const exerciseId = createId('exercise');
     const sessionId = createId('session');
@@ -36,7 +36,7 @@ describe('ExercisesListPage', () => {
 
     render(<MemoryRouter><ExercisesListPage /></MemoryRouter>);
 
-    expect(await screen.findByRole('link', { name: 'Halda päevi' })).toHaveAttribute('href', '/kavad');
+    expect(screen.queryByRole('link', { name: 'Halda päevi' })).not.toBeInTheDocument();
     expect(await screen.findByText('Viimane: 60 kg · 3/3 tehtud')).toBeInTheDocument();
     expect(screen.getByText('Järgmine siht: 3 × 10-15 x 65 kg')).toBeInTheDocument();
   });

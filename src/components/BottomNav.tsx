@@ -4,9 +4,10 @@ import { db } from '../db/appDb';
 
 const items = [
   { to: '/treening', label: 'Treening' },
+  { to: '/kavad', label: 'Kavad' },
   { to: '/harjutused', label: 'Harjutused' },
   { to: '/ajalugu', label: 'Ajalugu' },
-  { to: '/seaded', label: 'Seaded' },
+  { to: '/rohkem', label: 'Veel' },
 ];
 
 export function BottomNav() {

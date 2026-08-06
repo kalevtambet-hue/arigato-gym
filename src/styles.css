@@ -928,6 +928,299 @@ textarea {
   }
 }
 
+/* Phase 3: detail, history, and settings refinements. */
+.exercise-detail-page,
+.history-page,
+.settings-page {
+  max-width: 62rem;
+}
+
+.exercise-detail-header {
+  align-items: flex-start;
+}
+
+.exercise-detail-actions {
+  gap: var(--space-2);
+}
+
+.exercise-detail-layout {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.exercise-detail-overview {
+  display: grid;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-block: 1px solid var(--border);
+}
+
+.exercise-detail-overview .machine-copy,
+.exercise-detail-overview .note-copy {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.exercise-detail-overview .note-copy {
+  max-width: 65ch;
+  line-height: 1.55;
+}
+
+.exercise-detail-overview .primary-button {
+  width: fit-content;
+}
+
+.exercise-summary-grid {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--border);
+}
+
+.exercise-summary-item {
+  display: grid;
+  gap: var(--space-2);
+  min-height: 6.5rem;
+  padding: var(--space-3);
+  background: var(--surface);
+}
+
+.exercise-summary-item > span {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.exercise-summary-item strong,
+.history-date,
+.history-summary-result,
+.history-exercise-list {
+  font-variant-numeric: tabular-nums;
+}
+
+.exercise-summary-item strong {
+  color: var(--text-strong);
+  line-height: 1.3;
+}
+
+.detail-back-link {
+  width: fit-content;
+}
+
+.history-page .section-header {
+  margin-bottom: var(--space-2);
+}
+
+.history-list {
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
+.history-session {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.history-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: baseline;
+  min-height: 4rem;
+  padding: var(--space-3) 0;
+}
+
+.history-date {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.history-summary > strong {
+  color: var(--text-strong);
+  line-height: 1.25;
+}
+
+.history-summary-result {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  text-align: right;
+}
+
+.history-exercise-list {
+  gap: 0;
+  margin-bottom: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.history-exercise-list .list-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) repeat(3, auto);
+  gap: var(--space-2) var(--space-3);
+  align-items: baseline;
+  padding: var(--space-3) 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.history-exercise-list .list-card:last-child {
+  border-bottom: 0;
+}
+
+.history-exercise-list .list-card strong {
+  color: var(--text-strong);
+}
+
+.history-exercise-list .list-card span {
+  font-size: 0.84rem;
+}
+
+.history-item-failed {
+  background: color-mix(in srgb, var(--danger) 8%, transparent) !important;
+}
+
+.history-item-failed strong,
+.history-item-failed span {
+  color: var(--text) !important;
+}
+
+.history-result-success { color: var(--success) !important; }
+.history-result-failed { color: var(--danger) !important; }
+
+.settings-sections {
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
+.settings-section {
+  padding: var(--space-4) 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.settings-section h3 {
+  margin: 0 0 var(--space-3);
+  color: var(--text-strong);
+  font-size: 1rem;
+}
+
+.settings-section label {
+  max-width: 30rem;
+}
+
+.settings-section input,
+.settings-section select,
+.settings-section .file-button,
+.settings-section button {
+  min-height: 3rem;
+}
+
+.settings-data-section {
+  padding-inline: var(--space-3);
+  border-inline: 0.25rem solid var(--warning);
+  background: color-mix(in srgb, var(--warning) 6%, transparent);
+}
+
+.settings-data-section .button-stack {
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+.settings-data-section .secondary-button:last-of-type {
+  color: var(--danger);
+}
+
+.settings-page .help-accordion {
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
+.settings-page .help-details {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.settings-page .help-details summary {
+  min-height: 3rem;
+  padding: var(--space-3) 0;
+  color: var(--text);
+}
+
+.settings-page .help-content {
+  padding: 0 0 var(--space-3);
+}
+
+@media (min-width: 860px) {
+  .exercise-detail-layout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(19rem, 0.9fr);
+    align-items: start;
+  }
+
+  .exercise-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .exercise-detail-header .button-row {
+    width: 100%;
+  }
+
+  .exercise-detail-actions > * {
+    flex: 1 1 0;
+  }
+
+  .exercise-detail-overview .primary-button,
+  .detail-back-link {
+    width: 100%;
+  }
+
+  .history-summary {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-1) var(--space-3);
+  }
+
+  .history-summary-result {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .history-exercise-list .list-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .history-exercise-list .list-card span:first-of-type {
+    grid-column: 1;
+  }
+
+  .history-exercise-list .list-card span:nth-of-type(2) {
+    grid-column: 1;
+  }
+
+  .history-exercise-list .list-card span:last-child {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+  }
+
+  .settings-data-section .button-stack {
+    grid-template-columns: 1fr;
+  }
+}
+
 .nav-link,
 .muted,
 .list-card span,
@@ -1301,5 +1594,248 @@ textarea:focus-visible {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* Phase 2: navigation, plans, and exercise-management refinements. */
+.page-summary {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.bottom-nav {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.2rem;
+  padding-inline: var(--space-2);
+  background: var(--bottom-nav);
+}
+
+.nav-link {
+  min-height: 3.1rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.nav-link.active {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--text-strong);
+}
+
+.nav-indicator {
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 24%, transparent);
+}
+
+.plans-page .section-header,
+.workout-day-header {
+  align-items: flex-start;
+}
+
+.plan-list,
+.exercise-list,
+.day-exercise-list {
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
+.plan-list-row,
+.exercise-list-card,
+.day-exercise-row {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.plan-list-row {
+  padding: 0;
+}
+
+.plan-list-row .day-link {
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+.list-order {
+  grid-row: span 2;
+  align-self: start;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-list-row strong,
+.exercise-list-card strong,
+.day-exercise-title strong {
+  color: var(--text-strong);
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+
+.plans-page .modal-card {
+  box-shadow: none;
+}
+
+.search-panel {
+  border-color: transparent;
+  background: var(--surface-subtle);
+  box-shadow: none;
+}
+
+.exercises-list-page .section-header {
+  align-items: flex-start;
+}
+
+.exercise-list-card {
+  padding: 0;
+}
+
+.exercise-list-card .day-link {
+  gap: var(--space-1);
+  min-height: 4.5rem;
+  padding: var(--space-3) 0;
+}
+
+.exercise-list-card .day-link:hover {
+  background: var(--surface-subtle);
+}
+
+.exercise-meta,
+.exercise-result,
+.exercise-target {
+  font-size: 0.84rem;
+}
+
+.exercise-target {
+  color: var(--accent-text) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.day-management-form {
+  padding-block: var(--space-3);
+  border-block: 1px solid var(--border);
+}
+
+.add-exercise-form {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+}
+
+.day-exercise-row {
+  padding: var(--space-3) 0;
+}
+
+.day-exercise-row .config-head {
+  align-items: flex-start;
+}
+
+.day-exercise-title {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-3);
+}
+
+.day-exercise-title .list-order {
+  grid-row: span 3;
+}
+
+.day-exercise-title p {
+  margin: 0;
+}
+
+.day-exercise-actions {
+  flex-wrap: nowrap;
+}
+
+.day-exercise-actions .secondary-button,
+.day-exercise-actions .ghost-button {
+  min-height: 2.75rem;
+}
+
+@media (min-width: 860px) {
+  .plans-page,
+  .exercises-list-page,
+  .workout-day-page {
+    max-width: 62rem;
+  }
+
+  .plans-page .section-header,
+  .exercises-list-page .section-header,
+  .workout-day-header {
+    margin-bottom: var(--space-2);
+  }
+
+  .exercise-list-card .day-link {
+    grid-template-columns: minmax(15rem, 1.4fr) minmax(8rem, 0.65fr) minmax(12rem, 1fr) minmax(13rem, 1fr);
+    align-items: center;
+    column-gap: var(--space-3);
+  }
+
+  .exercise-list-card .day-link strong {
+    grid-row: 1;
+  }
+
+  .exercise-list-card .day-link span {
+    grid-row: 1;
+  }
+
+  .add-exercise-form {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell { padding-bottom: 6.4rem; }
+
+  .bottom-nav {
+    gap: 0.1rem;
+    padding-inline: 0.25rem;
+  }
+
+  .nav-link {
+    min-height: 3.25rem;
+    padding-inline: 0.15rem;
+    font-size: 0.66rem;
+  }
+
+  .plans-page .section-header,
+  .exercises-list-page .section-header,
+  .workout-day-header {
+    gap: var(--space-2);
+  }
+
+  .plans-page .section-header .primary-button,
+  .exercises-list-page .compact-header-actions {
+    width: 100%;
+  }
+
+  .exercises-list-page .compact-header-actions .primary-button {
+    width: 100%;
+  }
+
+  .day-management-form,
+  .add-exercise-form {
+    gap: var(--space-2);
+  }
+
+  .day-exercise-row .config-head {
+    gap: var(--space-3);
+  }
+
+  .day-exercise-actions {
+    width: 100%;
+  }
+
+  .day-exercise-actions > * {
+    flex: 1 1 0;
   }
 }

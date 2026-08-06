@@ -2,14 +2,9 @@ import { Link } from 'react-router-dom';
 
 const destinations = [
   {
-    to: '/harjutused',
-    title: 'Harjutused',
-    description: 'Halda harjutuste registrit ning vaata nende üksikasju.',
-  },
-  {
     to: '/seaded',
     title: 'Seaded',
-    description: 'Varunda andmed, impordi failid ja loe rakenduse abi.',
+    description: 'Halda varundust, välimust ja rakenduse abi.',
   },
 ];
 
