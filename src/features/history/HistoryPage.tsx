@@ -152,7 +152,7 @@ export function HistoryPage() {
             </ul>
           </details>
         ))}
-        {items.length === 0 ? <p className="empty-card">Ajalugu veel puudub.</p> : null}
+        {items.length === 0 ? <section className="empty-card empty-state" aria-labelledby="history-empty-title"><h3 id="history-empty-title">Ajalugu veel puudub.</h3><p>Lõpetatud treeningud ilmuvad siia automaatselt.</p></section> : null}
       </div>
     </section>
   );

@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { db } from '../../db/appDb';
@@ -39,5 +40,26 @@ describe('ExercisesListPage', () => {
     expect(screen.queryByRole('link', { name: 'Halda päevi' })).not.toBeInTheDocument();
     expect(await screen.findByText('Viimane: 60 kg · 3/3 tehtud')).toBeInTheDocument();
     expect(screen.getByText('Järgmine siht: 3 × 10-15 x 65 kg')).toBeInTheDocument();
+  });
+
+  it('shows a clear empty state with an action to add the first exercise', async () => {
+    render(<MemoryRouter><ExercisesListPage /></MemoryRouter>);
+
+    expect(await screen.findByText('Sul pole veel harjutusi.')).toBeInTheDocument();
+    expect(screen.getByText('Lisa esimene harjutus, et saaksid treeningkava koostada.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lisa harjutus' })).toBeInTheDocument();
+  });
+
+  it('lets the user clear an exercise search with no results', async () => {
+    const timestamp = new Date().toISOString();
+    await db.exercises.add({ id: createId('exercise'), name: 'Rinnalt surumine', machineNumber: '12', notes: '', createdAt: timestamp, updatedAt: timestamp });
+    const user = userEvent.setup();
+    render(<MemoryRouter><ExercisesListPage /></MemoryRouter>);
+
+    await user.type(await screen.findByLabelText('Otsi harjutust'), 'kükk');
+
+    expect(screen.getByText('Sellise otsinguga harjutusi ei leitud.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Tühjenda otsing' }));
+    expect(await screen.findByRole('link', { name: /Rinnalt surumine/ })).toBeInTheDocument();
   });
 });

@@ -58,9 +58,9 @@ export function ExercisesListPage() {
   return <section className="page exercises-list-page">
     <div className="section-header">
       <div><p className="eyebrow">Harjutuste register</p><h2>Harjutused</h2></div>
-      <div className="button-row compact-header-actions">
+      {exercises?.length ? <div className="button-row compact-header-actions">
         <button type="button" className="primary-button compact-add-button" onClick={() => setFormOpen(true)}>Lisa harjutus</button>
-      </div>
+      </div> : null}
     </div>
     {formOpen ? <ExerciseForm initialExercise={null} onClose={() => setFormOpen(false)} onSave={saveExercise} /> : null}
     <div className="panel search-panel compact-panel">
@@ -85,8 +85,16 @@ export function ExercisesListPage() {
           </Link>
         </li>;
       })}
-      {exercises?.length === 0 ? <li className="empty-card">Harjutusi veel ei ole.</li> : null}
-      {exercises && exercises.length > 0 && visibleExercises.length === 0 ? <li className="empty-card">Otsing ei andnud tulemusi.</li> : null}
+      {exercises?.length === 0 ? <li className="empty-card empty-state">
+        <h3>Sul pole veel harjutusi.</h3>
+        <p>Lisa esimene harjutus, et saaksid treeningkava koostada.</p>
+        <button type="button" className="primary-button" onClick={() => setFormOpen(true)}>Lisa harjutus</button>
+      </li> : null}
+      {exercises && exercises.length > 0 && visibleExercises.length === 0 ? <li className="empty-card empty-state">
+        <h3>Sellise otsinguga harjutusi ei leitud.</h3>
+        <p>Muuda otsingut või tühjenda otsing.</p>
+        <button type="button" className="secondary-button" onClick={() => setSearch('')}>Tühjenda otsing</button>
+      </li> : null}
     </ul>
   </section>;
 }

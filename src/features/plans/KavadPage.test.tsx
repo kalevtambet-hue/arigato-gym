@@ -137,7 +137,7 @@ describe('workout plan routes', () => {
     const user = userEvent.setup();
     await screen.findByTestId('day-exercise-row');
     await user.selectOptions(screen.getByLabelText('Vali harjutus'), newExerciseId);
-    await user.click(screen.getByRole('button', { name: 'Lisa päeva' }));
+    await user.click(screen.getByRole('button', { name: 'Lisa harjutus' }));
 
     await waitFor(async () => {
       const newRecord = (await db.dayExercises

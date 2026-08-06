@@ -1691,6 +1691,90 @@ textarea:focus-visible {
   box-shadow: none;
 }
 
+.exercise-form {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 42rem;
+}
+
+.exercise-form-heading h3,
+.empty-state h3 {
+  margin: 0;
+  color: var(--text-strong);
+}
+
+.exercise-form-heading .muted,
+.empty-state p,
+.field-hint,
+.field-error,
+.form-error {
+  margin: var(--space-1) 0 0;
+}
+
+.exercise-form-primary-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.exercise-form-section {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.exercise-form-section legend {
+  padding-inline: var(--space-1);
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.field-hint {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.field-error,
+.form-error {
+  color: var(--danger);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.exercise-form input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.exercise-form input,
+.exercise-form textarea {
+  min-height: 3rem;
+}
+
+.exercise-form-actions {
+  justify-content: flex-end;
+}
+
+.empty-state {
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-color: transparent;
+  background: var(--surface-subtle);
+  box-shadow: none;
+}
+
+.empty-state > * {
+  max-width: 42rem;
+}
+
+.empty-state .primary-button,
+.empty-state .secondary-button {
+  width: fit-content;
+  margin-top: var(--space-2);
+}
+
 .search-panel {
   border-color: transparent;
   background: var(--surface-subtle);
@@ -1799,6 +1883,11 @@ textarea:focus-visible {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: end;
   }
+
+  .exercise-form-section {
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+    align-items: start;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1845,5 +1934,14 @@ textarea:focus-visible {
 
   .day-exercise-actions > * {
     flex: 1 1 0;
+  }
+
+  .exercise-form-actions > * {
+    flex: 1 1 0;
+  }
+
+  .empty-state .primary-button,
+  .empty-state .secondary-button {
+    width: 100%;
   }
 }
