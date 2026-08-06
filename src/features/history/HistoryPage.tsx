@@ -38,6 +38,7 @@ function isHistoryExerciseFailed(
 
 export function HistoryPage() {
   const sessions = useLiveQuery(() => db.sessions.orderBy('performedAt').reverse().toArray(), []);
+  const workoutDays = useLiveQuery(() => db.workoutDays.toArray(), []);
   const sessionExercises = useLiveQuery(() => db.sessionExercises.toArray(), []);
   const setResults = useLiveQuery(() => db.setResults.toArray(), []);
   const [searchParams] = useSearchParams();
@@ -95,9 +96,10 @@ export function HistoryPage() {
         session,
         exercises,
         completedExercises: exercises.filter((item) => item.isComplete).length,
+        workoutDayName: workoutDays?.find((day) => day.id === session.workoutDayId)?.name ?? 'Treeningpäev',
       };
     });
-  }, [sessions, sessionExercises, setResults, exerciseFilter, exerciseId]);
+  }, [sessions, workoutDays, sessionExercises, setResults, exerciseFilter, exerciseId]);
 
   return (
     <section className="page history-page">
@@ -114,12 +116,13 @@ export function HistoryPage() {
         </label>
       </div>
       {exerciseId && selectedExercise === null ? <p className="empty-card">Valitud harjutust ei leitud.</p> : null}
-      <div className="stack">
-        {items.map(({ session, exercises, completedExercises }) => (
+      <div className="stack history-list">
+        {items.map(({ session, exercises, completedExercises, workoutDayName }) => (
           <details key={session.id} className="panel history-session compact-panel" data-testid={`history-session-${session.id}`}>
             <summary className="history-summary">
-              <strong>{new Date(session.performedAt).toLocaleDateString('et-EE')}</strong>
-              <span>
+              <span className="history-date">{new Date(session.performedAt).toLocaleDateString('et-EE')}</span>
+              <strong>{workoutDayName}</strong>
+              <span className="history-summary-result">
                 {session.status === 'partial'
                   ? 'Pooleli lõpetatud'
                   : session.status === 'aborted'
@@ -127,7 +130,7 @@ export function HistoryPage() {
                     : `${completedExercises}/${exercises.length} edukat`}
               </span>
             </summary>
-            <ul className="stack-list">
+            <ul className="stack-list history-exercise-list">
               {exercises.map((item) => (
                 <li
                   key={item.id}

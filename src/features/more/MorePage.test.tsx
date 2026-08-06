@@ -4,14 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { MorePage } from './MorePage';
 
 describe('MorePage', () => {
-  it('provides named accessible links to exercises and settings', () => {
+  it('provides the named accessible settings link without duplicating primary navigation', () => {
     render(
       <MemoryRouter>
         <MorePage />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('link', { name: /Harjutused/i })).toHaveAttribute('href', '/harjutused');
+    expect(screen.queryByRole('link', { name: /Harjutused/i })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Seaded/i })).toHaveAttribute('href', '/seaded');
   });
 });

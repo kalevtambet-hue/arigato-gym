@@ -53,6 +53,34 @@ describe('exercise routes', () => {
     expect(await screen.findByRole('heading', { name: 'Hack Squat' })).toBeInTheDocument();
   });
 
+  it('shows the latest completed result beside the next target', async () => {
+    await db.exercises.add({
+      id: 'detail-summary', name: 'Leg Press', machineNumber: '17', notes: '', createdAt: timestamp, updatedAt: timestamp,
+    });
+    await db.dayExercises.add({
+      id: 'detail-plan', workoutDayId: 'day-1', exerciseId: 'detail-summary', sortOrder: 0, targetSets: 3,
+      successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 65,
+      weightStep: 5, restSeconds: 60, createdAt: timestamp, updatedAt: timestamp,
+    });
+    await db.sessions.add({
+      id: 'detail-session', workoutDayId: 'day-1', performedAt: timestamp, status: 'completed', createdAt: timestamp, updatedAt: timestamp,
+    });
+    await db.sessionExercises.add({
+      id: 'detail-session-exercise', workoutSessionId: 'detail-session', dayExerciseId: 'detail-plan', exerciseId: 'detail-summary',
+      exerciseName: 'Leg Press', machineNumber: '17', targetSets: 3, successesRequired: 1, repMode: 'range',
+      targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, orderIndex: 0,
+    });
+    await db.setResults.bulkAdd([1, 2, 3].map((setNumber) => ({
+      id: `detail-session-exercise-${setNumber}`, workoutSessionExerciseId: 'detail-session-exercise', setNumber,
+      status: 'success' as const, completedReps: 15, usedWeight: 60,
+    })));
+
+    render(<MemoryRouter initialEntries={['/harjutused/detail-summary']}><App /></MemoryRouter>);
+
+    expect(await screen.findByText('Viimane: 60 kg · 3/3 tehtud')).toBeInTheDocument();
+    expect(screen.getByText('Järgmine siht: 3 × 10-15 x 65 kg')).toBeInTheDocument();
+  });
+
   it('handles an unknown exercise route safely', async () => {
     render(<MemoryRouter initialEntries={['/harjutused/puudub']}><App /></MemoryRouter>);
 

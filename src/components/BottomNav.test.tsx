@@ -53,7 +53,7 @@ describe('BottomNav', () => {
     expect(await screen.findByLabelText('Aktiivne treening')).toBeInTheDocument();
   });
 
-  it('shows exactly the four direct primary destinations', () => {
+  it('keeps workout planning directly discoverable and moves settings under more', () => {
     render(
       <MemoryRouter initialEntries={['/treening']}>
         <BottomNav />
@@ -62,8 +62,15 @@ describe('BottomNav', () => {
 
     const links = screen.getAllByRole('link');
 
-    expect(links).toHaveLength(4);
-    expect(links.map((link) => link.textContent)).toEqual(['Treening', 'Harjutused', 'Ajalugu', 'Seaded']);
-    expect(screen.queryByRole('link', { name: 'Rohkem' })).not.toBeInTheDocument();
+    expect(links).toHaveLength(5);
+    expect(links.map((link) => link.textContent)).toEqual([
+      'Treening',
+      'Kavad',
+      'Harjutused',
+      'Ajalugu',
+      'Veel',
+    ]);
+    expect(screen.getByRole('link', { name: 'Kavad' })).toHaveAttribute('href', '/kavad');
+    expect(screen.getByRole('link', { name: 'Veel' })).toHaveAttribute('href', '/rohkem');
   });
 });

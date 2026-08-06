@@ -26,9 +26,13 @@ export function KavadPage() {
     setFormOpen(false);
   }
 
-  return <section className="page">
+  return <section className="page plans-page">
     <div className="section-header">
-      <div><p className="eyebrow">Treeningu mallid</p><h2>Kavad</h2></div>
+      <div>
+        <p className="eyebrow">Treeningu mallid</p>
+        <h2>Kavad</h2>
+        {days?.length ? <p className="page-summary">{days.length} treeningpäeva</p> : null}
+      </div>
       <button type="button" className="primary-button" onClick={() => setFormOpen(true)}>Lisa treeningpäev</button>
     </div>
     {formOpen ? <div className="modal-card">
@@ -39,9 +43,10 @@ export function KavadPage() {
         <button type="button" className="primary-button" disabled={!name.trim()} onClick={() => void addDay()}>Salvesta päev</button>
       </div>
     </div> : null}
-    <ul className="stack-list" aria-label="Treeningpäevad">
-      {(days ?? []).map((day) => <li key={day.id} className="list-card">
+    <ul className="stack-list plan-list" aria-label="Treeningpäevad">
+      {(days ?? []).map((day, index) => <li key={day.id} className="list-card plan-list-row">
         <Link className="day-link" to={`/kavad/${day.id}`}>
+          <span className="list-order" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
           <strong>{day.name}</strong>
           <span>{day.notes || 'Ava päeva harjutused ja sihid'}</span>
         </Link>

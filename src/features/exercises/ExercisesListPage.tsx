@@ -59,8 +59,7 @@ export function ExercisesListPage() {
     <div className="section-header">
       <div><p className="eyebrow">Harjutuste register</p><h2>Harjutused</h2></div>
       <div className="button-row compact-header-actions">
-        <Link className="secondary-button compact-add-button" to="/kavad">Halda päevi</Link>
-        <button type="button" className="secondary-button compact-add-button" onClick={() => setFormOpen(true)}>Lisa harjutus</button>
+        <button type="button" className="primary-button compact-add-button" onClick={() => setFormOpen(true)}>Lisa harjutus</button>
       </div>
     </div>
     {formOpen ? <ExerciseForm initialExercise={null} onClose={() => setFormOpen(false)} onSave={saveExercise} /> : null}
@@ -70,7 +69,7 @@ export function ExercisesListPage() {
         <input value={search} onChange={(event) => setSearch(event.target.value)} />
       </label>
     </div>
-    <ul className="stack-list">
+    <ul className="stack-list exercise-list" aria-label="Harjutuste nimekiri">
       {visibleExercises.map((exercise: ExerciseRecord) => {
         const latest = exerciseContext?.latestByExerciseId.get(exercise.id);
         const latestResults = latest ? exerciseContext?.resultsBySessionExerciseId.get(latest.id) ?? [] : [];
@@ -80,9 +79,9 @@ export function ExercisesListPage() {
         return <li key={exercise.id} className="list-card exercise-list-card compact-list-card">
           <Link className="day-link" to={`/harjutused/${exercise.id}`}>
             <strong>{exercise.name}</strong>
-            <span>Masin #{exercise.machineNumber || '-'}</span>
-            {latest ? <span>Viimane: {latest.currentWeight} kg · {successfulSets}/{latest.targetSets} tehtud</span> : <span>Viimane treening puudub</span>}
-            {plan ? <span>Järgmine siht: {plan.targetSets} × {formatTarget(plan.repMode, plan.targetRepsMin, plan.targetRepsMax, plan.currentWeight)}</span> : <span>Järgmine siht puudub</span>}
+            <span className="exercise-meta">Masin #{exercise.machineNumber || '-'}</span>
+            {latest ? <span className="exercise-result">Viimane: {latest.currentWeight} kg · {successfulSets}/{latest.targetSets} tehtud</span> : <span className="exercise-result">Viimane treening puudub</span>}
+            {plan ? <span className="exercise-target">Järgmine siht: {plan.targetSets} × {formatTarget(plan.repMode, plan.targetRepsMin, plan.targetRepsMax, plan.currentWeight)}</span> : <span className="exercise-target">Järgmine siht puudub</span>}
           </Link>
         </li>;
       })}
