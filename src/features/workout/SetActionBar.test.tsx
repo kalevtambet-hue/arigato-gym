@@ -24,4 +24,21 @@ describe('SetActionBar', () => {
     expect(onFailed).toHaveBeenCalledOnce();
     expect(onSuccess).toHaveBeenCalledOnce();
   });
+
+  it('replaces generic success with selectable successful repetition counts', async () => {
+    const user = userEvent.setup();
+    const onFailed = vi.fn();
+    const onSuccess = vi.fn();
+    render(<SetActionBar onFailed={onFailed} onSuccess={onSuccess} successReps={[10, 11, 12]} />);
+
+    const bar = screen.getByTestId('sticky-action-bar');
+    expect(within(bar).getByRole('button', { name: '10' })).toBeInTheDocument();
+    expect(within(bar).getByRole('button', { name: '11' })).toBeInTheDocument();
+    expect(within(bar).getByRole('button', { name: '12' })).toBeInTheDocument();
+    expect(within(bar).getByRole('button', { name: 'Ei tulnud täis' })).toBeInTheDocument();
+    expect(within(bar).queryByRole('button', { name: 'Tehtud' })).not.toBeInTheDocument();
+
+    await user.click(within(bar).getByRole('button', { name: '11' }));
+    expect(onSuccess).toHaveBeenCalledWith(11);
+  });
 });

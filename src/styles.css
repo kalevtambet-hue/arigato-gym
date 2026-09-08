@@ -724,6 +724,10 @@ textarea {
   min-height: 3rem;
 }
 
+.sticky-action-bar.rep-choice-bar {
+  grid-template-columns: repeat(auto-fit, minmax(3.5rem, 1fr));
+}
+
 .file-button {
   position: relative;
   display: inline-flex;

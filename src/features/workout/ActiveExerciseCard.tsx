@@ -17,6 +17,7 @@ type ActiveExerciseCardProps = {
   onWeightChange: (weight: number) => void;
   onRepsChange: (reps: number) => void;
   onSetClick?: (setNumber: number) => void;
+  afterTarget?: React.ReactNode;
   children?: React.ReactNode;
 };
 
@@ -33,6 +34,7 @@ export function ActiveExerciseCard({
   onWeightChange,
   onRepsChange,
   onSetClick,
+  afterTarget,
   children,
 }: ActiveExerciseCardProps) {
   const repStepper = getRepStepperPresentation(
@@ -61,6 +63,8 @@ export function ActiveExerciseCard({
         </strong>
         <span>Seeria {setNumber} / {exercise.targetSets}</span>
       </div>
+
+      {afterTarget}
 
       <div className="active-control-grid" data-testid="active-control-grid">
         {!durationMode ? (

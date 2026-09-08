@@ -1030,23 +1030,25 @@ export function WorkoutPage() {
                 reps: String(targetResult.completedReps),
               });
             }}
+            afterTarget={
+              restTimer?.sessionExerciseId === nextExercise.id ? (
+                <div className="rest-timer-panel">
+                  <strong>Puhkus</strong>
+                  <span>{formatRestTime(restTimer.remainingSeconds)}</span>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      writePersistedRestTimer(null);
+                      setRestTimer(null);
+                    }}
+                  >
+                    Jätan vahele
+                  </button>
+                </div>
+              ) : null
+            }
           >
-            {restTimer?.sessionExerciseId === nextExercise.id ? (
-              <div className="rest-timer-panel">
-                <strong>Puhkus</strong>
-                <span>{formatRestTime(restTimer.remainingSeconds)}</span>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => {
-                    writePersistedRestTimer(null);
-                    setRestTimer(null);
-                  }}
-                >
-                  Jätan vahele
-                </button>
-              </div>
-            ) : null}
             {lastSavedSet?.sessionExerciseId === nextExercise.id ? (
               <div className="undo-row">
                 <button
@@ -1535,13 +1537,21 @@ export function WorkoutPage() {
       {activeSession && nextExercise ? (
         <SetActionBar
           onFailed={() => setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' })}
-          onSuccess={() =>
+          onSuccess={(completedReps) =>
             void handleSetSave(
               nextExercise,
               nextSetNumber,
               'success',
-              selectedReps ?? getSuccessValue(nextExercise.repMode, nextExercise.targetRepsMin, nextExercise.targetRepsMax),
+              completedReps ?? selectedReps ?? getSuccessValue(nextExercise.repMode, nextExercise.targetRepsMin, nextExercise.targetRepsMax),
             )
+          }
+          successReps={
+            nextExercise.repMode === 'range'
+              ? Array.from(
+                  { length: nextExercise.targetRepsMax - nextExercise.targetRepsMin + 1 },
+                  (_, index) => nextExercise.targetRepsMin + index,
+                )
+              : undefined
           }
         />
       ) : null}

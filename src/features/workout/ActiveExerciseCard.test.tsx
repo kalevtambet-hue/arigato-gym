@@ -74,6 +74,26 @@ describe('ActiveExerciseCard', () => {
     expect(screen.getByTestId('active-control-grid')).toBeInTheDocument();
   });
 
+  it('renders rest information above the set controls', () => {
+    render(
+      <ActiveExerciseCard
+        exercise={rangeExercise}
+        setNumber={2}
+        setStates={['success', 'pending', 'pending']}
+        selectedReps={8}
+        onWeightChange={vi.fn()}
+        onRepsChange={vi.fn()}
+        afterTarget={<div data-testid="rest-timer">Puhkus 1:00</div>}
+      />,
+    );
+
+    const card = screen.getByTestId('active-workout-card');
+    const restTimer = screen.getByTestId('rest-timer');
+    const controls = screen.getByTestId('active-control-grid');
+    expect(card).toContainElement(restTimer);
+    expect(restTimer.compareDocumentPosition(controls)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('keeps fixed repetition targets fixed and never proposes negative weight', async () => {
     const user = userEvent.setup();
     const onWeightChange = vi.fn();

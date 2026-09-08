@@ -140,7 +140,7 @@ describe('WorkoutPage', () => {
     const user = userEvent.setup();
     render(<WorkoutPage />);
     await user.click(await screen.findByRole('button', { name: 'Vähenda kordusi' }));
-    await user.click(screen.getByRole('button', { name: 'Tehtud' }));
+    await user.click(screen.getByRole('button', { name: '11' }));
 
     await waitFor(async () => {
       const result = await db.setResults.where('workoutSessionExerciseId').equals(sessionExerciseId).first();
@@ -165,7 +165,7 @@ describe('WorkoutPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Vähenda kordusi' }));
     await user.click(screen.getByRole('button', { name: 'Suurenda raskust' }));
     await waitFor(() => expect(screen.getByText('55 kg')).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: 'Tehtud' }));
+    await user.click(screen.getByRole('button', { name: '11' }));
 
     await waitFor(async () => {
       expect((await db.setResults.where('workoutSessionExerciseId').equals(sessionExerciseId).first())?.completedReps).toBe(11);
@@ -514,7 +514,7 @@ describe('WorkoutPage', () => {
     expect(getDots()).toHaveLength(3);
     expect(screen.getByText('Seeria 1 · 15 kordust · sinu kord')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Tehtud' }));
+    await user.click(screen.getByRole('button', { name: '15' }));
     await waitFor(() => {
       expect(screen.getByTestId('set-dot-1')).toHaveClass('set-dot-success');
     });
@@ -587,9 +587,9 @@ describe('WorkoutPage', () => {
       .map((button) => button.textContent?.trim())
       .filter(Boolean);
 
-    expect(actionButtons.slice(0, 2)).toEqual(['Ei tulnud täis', 'Tehtud']);
+    expect(actionButtons).toEqual(['10', '11', '12', '13', '14', '15', 'Ei tulnud täis']);
 
-    await user.click(screen.getByRole('button', { name: 'Tehtud' }));
+    await user.click(screen.getByRole('button', { name: '15' }));
 
     expect(await screen.findByRole('button', { name: 'Võta tagasi' })).toBeInTheDocument();
     expect(await db.setResults.where('workoutSessionExerciseId').equals(sessionExerciseId).count()).toBe(1);
@@ -674,7 +674,7 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
 
     expect(await screen.findByText('Puhkus')).toBeInTheDocument();
     expect(screen.getByText('1:30')).toBeInTheDocument();
@@ -759,7 +759,7 @@ describe('WorkoutPage', () => {
     const firstRender = render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
 
     expect(await screen.findByText('Puhkus')).toBeInTheDocument();
     expect(screen.getByText('1:30')).toBeInTheDocument();
@@ -1554,9 +1554,9 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
     await user.click(await screen.findByRole('button', { name: 'Lõpeta treening' }));
 
     expect(await screen.findByText('Järgmine siht')).toBeInTheDocument();
@@ -1685,9 +1685,9 @@ describe('WorkoutPage', () => {
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
     await user.click(await screen.findByRole('button', { name: 'Lõpeta treening' }));
 
     expect(await screen.findByText('Järgmine siht')).toBeInTheDocument();
@@ -1756,7 +1756,7 @@ describe('WorkoutPage', () => {
     await user.clear(screen.getByLabelText('Raskus (kg)'));
     await user.type(screen.getByLabelText('Raskus (kg)'), '45');
     await user.click(screen.getByRole('button', { name: 'Salvesta siht' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
 
     expect((await db.setResults.get(`${sessionExerciseId}-1`))?.usedWeight).toBe(45);
   });
@@ -1837,7 +1837,7 @@ describe('WorkoutPage', () => {
       expect((await db.dayExercises.get(dayExerciseId))?.restSeconds).toBe(120);
     });
 
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
     expect(await screen.findByText('2:00')).toBeInTheDocument();
   });
 
@@ -1907,9 +1907,9 @@ describe('WorkoutPage', () => {
     await user.clear(screen.getByLabelText('Raskus (kg)'));
     await user.type(screen.getByLabelText('Raskus (kg)'), '45');
     await user.click(screen.getByRole('button', { name: 'Salvesta siht' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
     await user.click(await screen.findByRole('button', { name: 'Lõpeta treening' }));
 
     const nextTargetHeading = await screen.findByText('Järgmine siht');
@@ -2045,9 +2045,9 @@ describe('WorkoutPage', () => {
     await user.clear(screen.getByLabelText('Raskus (kg)'));
     await user.type(screen.getByLabelText('Raskus (kg)'), '45');
     await user.click(screen.getByRole('button', { name: 'Salvesta siht' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
     await user.click(await screen.findByRole('button', { name: 'Lõpeta treening' }));
 
     expect(await screen.findByText('Järgmine siht')).toBeInTheDocument();
