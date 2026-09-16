@@ -19,6 +19,7 @@ import type {
 } from '../../db/types';
 import { computeNextTarget } from '../../domain/progression';
 import { countConsecutiveSuccesses } from '../../domain/consecutiveProgression';
+import { getNextWorkoutExercise } from '../../domain/nextWorkoutExercise';
 import { buildSessionExercises } from '../../domain/session';
 import { formatTarget, getSuccessValue, isDurationMode } from '../../domain/targetMode';
 import { createId } from '../../lib/id';
@@ -703,10 +704,12 @@ export function WorkoutPage() {
       resultsCount.set(item.workoutSessionExerciseId, (resultsCount.get(item.workoutSessionExerciseId) ?? 0) + 1);
     }
 
-    return (sessionExercises ?? []).find(
-      (item) => (resultsCount.get(item.id) ?? 0) < item.targetSets,
+    return getNextWorkoutExercise(
+      sessionExercises ?? [],
+      resultsCount,
+      selectedDay?.circuitMode ?? false,
     );
-  }, [sessionExercises, setResults]);
+  }, [selectedDay?.circuitMode, sessionExercises, setResults]);
 
   const upcomingExercises = useMemo(() => {
     const resultsCount = new Map<string, number>();

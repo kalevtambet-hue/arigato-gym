@@ -148,6 +148,26 @@ describe('WorkoutPage', () => {
     });
   });
 
+  it('moves to the next exercise after each set for a circuit workout', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    await db.workoutDays.add({ id: dayId, name: 'Ring', notes: '', circuitMode: true, sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.add({ id: sessionId, workoutDayId: dayId, performedAt: timestamp, status: 'active', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.bulkAdd([
+      { id: createId('session-exercise'), workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseName: 'Chest Press', machineNumber: '12', targetSets: 2, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, orderIndex: 0 },
+      { id: createId('session-exercise'), workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseName: 'Leg Press', machineNumber: '17', targetSets: 2, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 100, weightStep: 5, orderIndex: 1 },
+    ]);
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    expect(await screen.findByRole('heading', { name: 'Chest Press' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '15' }));
+
+    expect(await screen.findByRole('heading', { name: 'Leg Press' })).toBeInTheDocument();
+  });
+
   it('keeps selected repetitions when the active exercise weight changes', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');
