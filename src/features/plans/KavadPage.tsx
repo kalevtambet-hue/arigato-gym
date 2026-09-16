@@ -15,14 +15,16 @@ export function KavadPage() {
   );
   const [formOpen, setFormOpen] = useState(false);
   const [name, setName] = useState('');
+  const [circuitMode, setCircuitMode] = useState(false);
 
   async function addDay() {
     const timestamp = nowIso();
     await db.workoutDays.add({
-      id: createId('day'), name: name.trim(), notes: '', sortOrder: await db.workoutDays.count(),
+      id: createId('day'), name: name.trim(), notes: '', circuitMode, sortOrder: await db.workoutDays.count(),
       isArchived: false, createdAt: timestamp, updatedAt: timestamp,
     });
     setName('');
+    setCircuitMode(false);
     setFormOpen(false);
   }
 
@@ -38,8 +40,9 @@ export function KavadPage() {
     {formOpen ? <div className="modal-card">
       <h3>Uus treeningpäev</h3>
       <label>Päeva nimi<input value={name} onChange={(event) => setName(event.target.value)} /></label>
+      <label className="checkbox-field"><input type="checkbox" checked={circuitMode} onChange={(event) => setCircuitMode(event.target.checked)} />Ringtreening</label>
       <div className="button-row">
-        <button type="button" className="secondary-button" onClick={() => setFormOpen(false)}>Loobu</button>
+        <button type="button" className="secondary-button" onClick={() => { setCircuitMode(false); setFormOpen(false); }}>Loobu</button>
         <button type="button" className="primary-button" disabled={!name.trim()} onClick={() => void addDay()}>Salvesta päev</button>
       </div>
     </div> : null}

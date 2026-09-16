@@ -36,6 +36,22 @@ describe('workout plan routes', () => {
     expect(canDuplicateDay([])).toBe(true);
   });
 
+  it('saves circuit mode when creating a new workout day', async () => {
+    render(<MemoryRouter initialEntries={['/kavad']}><App /></MemoryRouter>);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Lisa treeningpäev' }));
+    await user.type(screen.getByLabelText('Päeva nimi'), 'Ring');
+    await user.click(screen.getByLabelText('Ringtreening'));
+    await user.click(screen.getByRole('button', { name: 'Salvesta päev' }));
+
+    await waitFor(async () => {
+      expect((await db.workoutDays.toArray()).find((day) => day.name === 'Ring')).toMatchObject({
+        circuitMode: true,
+      });
+    });
+  });
+
   it('lists workout days at /kavad and opens a selected day on its own route', async () => {
     const seed = createInMemorySeed();
     await db.workoutDays.bulkAdd(seed.workoutDays);
