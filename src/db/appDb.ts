@@ -199,6 +199,25 @@ export class AppDb extends Dexie {
           row.bodyweightGrams ??= null;
         });
       });
+    this.version(10)
+      .stores({
+        exercises: 'id, name, machineNumber, primaryTargetGroup, updatedAt',
+        workoutDays: 'id, sortOrder, isArchived, updatedAt',
+        dayExercises: 'id, workoutDayId, exerciseId, sortOrder, updatedAt',
+        sessions: 'id, workoutDayId, status, performedAt',
+        sessionExercises: 'id, workoutSessionId, dayExerciseId, exerciseId, primaryTargetGroup, orderIndex, performedOrder',
+        setResults: 'id, workoutSessionExerciseId, setNumber',
+        exerciseEvents: 'id, exerciseId, createdAt, type, actor',
+        sessionSnapshots: 'id, workoutSessionId, kind, capturedAt',
+        setResultRevisions: 'id, setResultId, revision, recordedAt',
+        auditEvents: 'id, entityType, entityId, occurredAt, actor',
+        progressionTargetGroups: 'id, dayExerciseId, role, updatedAt',
+      })
+      .upgrade(async (tx) => {
+        await tx.table('workoutDays').toCollection().modify((day) => {
+          day.circuitMode ??= false;
+        });
+      });
   }
 }
 

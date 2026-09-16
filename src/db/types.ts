@@ -56,6 +56,7 @@ export type WorkoutDayRecord = {
   id: string;
   name: string;
   notes: string;
+  circuitMode?: boolean;
   sortOrder: number;
   isArchived: boolean;
   createdAt: string;

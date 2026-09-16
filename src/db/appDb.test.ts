@@ -34,6 +34,15 @@ describe('AppDb migrations', () => {
       createdAt: '2026-08-01T10:00:00.000Z',
       updatedAt: '2026-08-01T10:00:00.000Z',
     });
+    await legacy.table('workoutDays').add({
+      id: 'day-1',
+      name: 'Päev 1',
+      notes: '',
+      sortOrder: 0,
+      isArchived: false,
+      createdAt: '2026-08-01T10:00:00.000Z',
+      updatedAt: '2026-08-01T10:00:00.000Z',
+    });
     await legacy.table('sessionExercises').add({
       id: 'session-exercise-1',
       workoutSessionId: 'session-1',
@@ -80,6 +89,9 @@ describe('AppDb migrations', () => {
       actualMetricValue: 12,
       actualLoadGrams: 40_000,
       targetSnapshot: null,
+    });
+    expect(await db.workoutDays.get('day-1')).toMatchObject({
+      circuitMode: false,
     });
     expect(db.tables.map((table) => table.name)).toEqual(
       expect.arrayContaining(['sessionSnapshots', 'setResultRevisions', 'auditEvents', 'progressionTargetGroups']),
