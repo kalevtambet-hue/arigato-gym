@@ -103,6 +103,33 @@ describe('workout plan routes', () => {
     expect(screen.getByLabelText('Sihi tüüp')).toHaveValue('range');
   });
 
+  it('reorders exercises from the day edit view', async () => {
+    const seed = createInMemorySeed();
+    const timestamp = nowIso();
+    const firstExerciseId = createId('exercise');
+    const secondExerciseId = createId('exercise');
+    await db.workoutDays.bulkAdd(seed.workoutDays);
+    await db.exercises.bulkAdd([
+      { id: firstExerciseId, name: 'Chest Press', machineNumber: '12', notes: '', createdAt: timestamp, updatedAt: timestamp },
+      { id: secondExerciseId, name: 'Leg Press', machineNumber: '17', notes: '', createdAt: timestamp, updatedAt: timestamp },
+    ]);
+    await db.dayExercises.bulkAdd([
+      { id: createId('day-exercise'), workoutDayId: seed.workoutDays[0].id, exerciseId: firstExerciseId, sortOrder: 0, targetSets: 3, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp },
+      { id: createId('day-exercise'), workoutDayId: seed.workoutDays[0].id, exerciseId: secondExerciseId, sortOrder: 1, targetSets: 3, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 100, weightStep: 5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp },
+    ]);
+
+    render(<MemoryRouter initialEntries={[`/kavad/${seed.workoutDays[0].id}`]}><App /></MemoryRouter>);
+    const user = userEvent.setup();
+
+    expect(await screen.findByRole('button', { name: 'Tõsta Chest Press üles' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Tõsta Leg Press üles' }));
+
+    await waitFor(async () => {
+      const rows = await db.dayExercises.where('workoutDayId').equals(seed.workoutDays[0].id).sortBy('sortOrder');
+      expect(rows.map((row) => row.exerciseId)).toEqual([secondExerciseId, firstExerciseId]);
+    });
+  });
+
   it('keeps base exercise CRUD on the dedicated exercises route instead of /kavad', async () => {
     const seed = createInMemorySeed();
     const timestamp = nowIso();

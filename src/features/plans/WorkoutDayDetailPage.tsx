@@ -28,6 +28,17 @@ async function addDayExercise(workoutDayId: string, exerciseId: string) {
     successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 40,
     weightStep: 5, restSeconds: getDefaultRestSeconds(), createdAt: timestamp, updatedAt: timestamp });
 }
+async function moveDayExercise(items: DayExerciseView[], index: number, direction: -1 | 1) {
+  const item = items[index];
+  const neighbour = items[index + direction];
+  if (!item || !neighbour) return;
+
+  const timestamp = nowIso();
+  await db.transaction('rw', db.dayExercises, async () => {
+    await db.dayExercises.update(item.id, { sortOrder: neighbour.sortOrder, updatedAt: timestamp });
+    await db.dayExercises.update(neighbour.id, { sortOrder: item.sortOrder, updatedAt: timestamp });
+  });
+}
 async function updateDayExercise(id: string, changes: Partial<Pick<DayExerciseRecord, 'targetSets' | 'successesRequired' | 'repMode' | 'targetRepsMin' | 'targetRepsMax' | 'currentWeight' | 'weightStep'>>) {
   const nextChanges = { ...changes };
   if (changes.repMode && isDurationMode(changes.repMode)) nextChanges.currentWeight = 0;
@@ -88,12 +99,13 @@ export function WorkoutDayDetailPage() {
     </div>
     <div className="inline-form add-exercise-form"><select aria-label="Vali harjutus" value={selectedExerciseId} onChange={(event) => setSelectedExerciseId(event.target.value)}><option value="">Vali harjutus</option>{(exercises ?? []).map((exercise) => <option key={exercise.id} value={exercise.id}>{exercise.name}</option>)}</select><button type="button" className="primary-button" disabled={!selectedExerciseId} onClick={() => { void addDayExercise(workoutDay.id, selectedExerciseId); setSelectedExerciseId(''); }}>Lisa harjutus</button></div>
     {itemList.length === 0 ? <section className="empty-card empty-state" aria-labelledby="day-exercises-empty-title"><h3 id="day-exercises-empty-title">Sellel treeningpäeval pole veel harjutusi.</h3><p>{(exercises ?? []).length ? 'Vali ülalt harjutus, mida soovid selles treeningus teha.' : 'Lisa esmalt harjutus, mida soovid selles treeningus teha.'}</p>{(exercises ?? []).length ? null : <Link className="secondary-button" to="/harjutused">Lisa harjutus</Link>}</section> : null}
-    <div className="stack day-exercise-list">{itemList.map((item, index) => <ExerciseRow key={item.id} item={item} index={index} expanded={expanded.includes(item.id)} onToggle={() => setExpanded((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])} />)}</div>
+    <div className="stack day-exercise-list">{itemList.map((item, index) => <ExerciseRow key={item.id} item={item} index={index} itemCount={itemList.length} expanded={expanded.includes(item.id)} onMove={(direction) => void moveDayExercise(itemList, index, direction)} onToggle={() => setExpanded((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])} />)}</div>
   </section>;
 }
 
-function ExerciseRow({ item, index, expanded, onToggle }: { item: DayExerciseView; index: number; expanded: boolean; onToggle: () => void }) {
-  return <article className="config-card day-exercise-row" data-testid="day-exercise-row"><div className="config-head"><div className="day-exercise-title"><span className="list-order" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><strong>{item.exercise?.name ?? 'Harjutus'}</strong><p>Masin #{item.exercise?.machineNumber || '-'}</p><p>{item.targetSets} x {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}</p></div><div className="button-row day-exercise-actions"><button type="button" className="secondary-button" aria-expanded={expanded} aria-label={`${expanded ? 'Sulge' : 'Ava'} ${item.exercise?.name ?? 'harjutus'}`} onClick={onToggle}>{expanded ? 'Sulge' : 'Ava'}</button><button type="button" className="ghost-button" onClick={() => { if (window.confirm('Eemaldada harjutus päevast?')) void db.dayExercises.delete(item.id); }}>Eemalda</button></div></div>{expanded ? <TargetEditor item={item} /> : null}</article>;
+function ExerciseRow({ item, index, itemCount, expanded, onMove, onToggle }: { item: DayExerciseView; index: number; itemCount: number; expanded: boolean; onMove: (direction: -1 | 1) => void; onToggle: () => void }) {
+  const exerciseName = item.exercise?.name ?? 'harjutus';
+  return <article className="config-card day-exercise-row" data-testid="day-exercise-row"><div className="config-head"><div className="day-exercise-title"><span className="list-order" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><strong>{item.exercise?.name ?? 'Harjutus'}</strong><p>Masin #{item.exercise?.machineNumber || '-'}</p><p>{item.targetSets} x {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}</p></div><div className="button-row day-exercise-actions"><button type="button" className="secondary-button" aria-label={`Tõsta ${exerciseName} üles`} disabled={index === 0} onClick={() => onMove(-1)}>Üles</button><button type="button" className="secondary-button" aria-label={`Tõsta ${exerciseName} alla`} disabled={index === itemCount - 1} onClick={() => onMove(1)}>Alla</button><button type="button" className="secondary-button" aria-expanded={expanded} aria-label={`${expanded ? 'Sulge' : 'Ava'} ${exerciseName}`} onClick={onToggle}>{expanded ? 'Sulge' : 'Ava'}</button><button type="button" className="ghost-button" onClick={() => { if (window.confirm('Eemaldada harjutus päevast?')) void db.dayExercises.delete(item.id); }}>Eemalda</button></div></div>{expanded ? <TargetEditor item={item} /> : null}</article>;
 }
 
 function TargetEditor({ item }: { item: DayExerciseView }) {
