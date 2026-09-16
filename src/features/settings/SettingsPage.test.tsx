@@ -35,6 +35,17 @@ afterEach(() => {
 afterEach(clearDatabase);
 
 describe('SettingsPage', () => {
+  it('restores an archived workout day', async () => {
+    await db.workoutDays.add({ id: 'archived-day', name: 'Vana päev', notes: '', sortOrder: 0, isArchived: true, createdAt: '2026-09-16T00:00:00.000Z', updatedAt: '2026-09-16T00:00:00.000Z' });
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    expect(await screen.findByText('Vana päev')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Taasta Vana päev' }));
+
+    await waitFor(async () => expect((await db.workoutDays.get('archived-day'))?.isArchived).toBe(false));
+  });
+
   it('shows app version and build information', () => {
     render(<SettingsPage />);
 

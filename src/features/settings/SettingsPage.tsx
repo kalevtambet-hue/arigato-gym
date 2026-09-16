@@ -1,6 +1,8 @@
 import type { BackupPayload, WorkoutSessionStatus } from '../../db/types';
 import { clearLocalData, exportBackup, importBackup } from '../../db/repositories';
 import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db/appDb';
 import { parseCsv, toCsv } from './exportCsv';
 import { getDefaultRestSeconds, setDefaultRestSeconds } from './restDuration';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
@@ -52,6 +54,10 @@ export function SettingsPage() {
   const [defaultRestSeconds, setDefaultRestSecondsState] = useState(getDefaultRestSeconds);
   const [defaultRestDurationDraft, setDefaultRestDurationDraft] = useState(() => String(getDefaultRestSeconds()));
   const [dataFeedback, setDataFeedback] = useState('');
+  const archivedDays = useLiveQuery(
+    () => db.workoutDays.orderBy('sortOrder').filter((day) => day.isArchived).toArray(),
+    [],
+  );
   const helpSections = [
     {
       title: 'Privaatsus',
@@ -271,6 +277,12 @@ export function SettingsPage() {
               }}
             />
           </label>
+        </article>
+        <article className="panel settings-card settings-section compact-panel">
+          <h3>Arhiiv</h3>
+          {(archivedDays ?? []).length ? <ul className="stack-list">
+            {archivedDays?.map((day) => <li key={day.id} className="list-card"><strong>{day.name}</strong><button type="button" className="secondary-button" aria-label={`Taasta ${day.name}`} onClick={() => void db.workoutDays.update(day.id, { isArchived: false, updatedAt: new Date().toISOString() })}>Taasta</button></li>)}
+          </ul> : <p className="muted">Arhiivis pole treeningpäevi.</p>}
         </article>
         <article className="panel settings-card settings-section settings-data-section compact-panel">
           <h3>Andmed</h3>

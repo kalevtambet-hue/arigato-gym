@@ -142,7 +142,7 @@ describe('workout plan routes', () => {
     await waitFor(async () => {
       expect((await db.workoutDays.get(seed.workoutDays[0].id))?.isArchived).toBe(true);
     });
-    expect(await screen.findByText('Sul pole veel treeningpäevi.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^Päev 1/ })).not.toBeInTheDocument();
   });
 
   it('keeps base exercise CRUD on the dedicated exercises route instead of /kavad', async () => {
