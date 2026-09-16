@@ -87,6 +87,11 @@ export function WorkoutDayDetailPage() {
     navigate(`/kavad/${copyId}`);
   }
   async function deleteDay() { if (window.confirm(`Kustutada päev "${workoutDay.name}"?`)) { await db.transaction('rw', db.workoutDays, db.dayExercises, async () => { await db.dayExercises.where('workoutDayId').equals(workoutDay.id).delete(); await db.workoutDays.delete(workoutDay.id); }); navigate('/kavad'); } }
+  async function archiveDay() {
+    if (!window.confirm(`Arhiveerida päev "${workoutDay.name}"?`)) return;
+    await db.workoutDays.update(workoutDay.id, { isArchived: true, updatedAt: nowIso() });
+    navigate('/kavad');
+  }
 
   return <section className="page workout-day-page">
     <div className="section-header workout-day-header"><div><p className="eyebrow">Treeningpäev</p><h2>{workoutDay.name}</h2><p className="page-summary">{itemList.length} harjutust</p></div><Link className="secondary-button" to="/kavad">Tagasi kavade juurde</Link></div>
@@ -95,6 +100,7 @@ export function WorkoutDayDetailPage() {
       <label>Päeva märkus<input value={dayNotes} onChange={(event) => setDayNotes(event.target.value)} /></label>
       <button type="button" className="secondary-button" disabled={!dayName.trim() || (dayName.trim() === workoutDay.name && dayNotes === workoutDay.notes)} onClick={() => void saveDay()}>Salvesta nimi</button>
       <button type="button" className="secondary-button" disabled={!canDuplicateDay(items)} onClick={() => void duplicateDay()}>Duplikeeri päev</button>
+      <button type="button" className="secondary-button" onClick={() => void archiveDay()}>Arhiveeri päev</button>
       <button type="button" className="ghost-button" onClick={() => void deleteDay()}>Kustuta päev</button>
     </div>
     <div className="inline-form add-exercise-form"><select aria-label="Vali harjutus" value={selectedExerciseId} onChange={(event) => setSelectedExerciseId(event.target.value)}><option value="">Vali harjutus</option>{(exercises ?? []).map((exercise) => <option key={exercise.id} value={exercise.id}>{exercise.name}</option>)}</select><button type="button" className="primary-button" disabled={!selectedExerciseId} onClick={() => { void addDayExercise(workoutDay.id, selectedExerciseId); setSelectedExerciseId(''); }}>Lisa harjutus</button></div>

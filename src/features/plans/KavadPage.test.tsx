@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../App';
 import { db } from '../../db/appDb';
 import { createInMemorySeed } from '../../db/repositories';
@@ -128,6 +128,21 @@ describe('workout plan routes', () => {
       const rows = await db.dayExercises.where('workoutDayId').equals(seed.workoutDays[0].id).sortBy('sortOrder');
       expect(rows.map((row) => row.exerciseId)).toEqual([secondExerciseId, firstExerciseId]);
     });
+  });
+
+  it('archives a workout day from its detail view', async () => {
+    const seed = createInMemorySeed();
+    await db.workoutDays.bulkAdd(seed.workoutDays);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<MemoryRouter initialEntries={[`/kavad/${seed.workoutDays[0].id}`]}><App /></MemoryRouter>);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Arhiveeri päev' }));
+
+    await waitFor(async () => {
+      expect((await db.workoutDays.get(seed.workoutDays[0].id))?.isArchived).toBe(true);
+    });
+    expect(await screen.findByText('Sul pole veel treeningpäevi.')).toBeInTheDocument();
   });
 
   it('keeps base exercise CRUD on the dedicated exercises route instead of /kavad', async () => {
