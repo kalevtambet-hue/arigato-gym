@@ -1464,11 +1464,12 @@ describe('WorkoutPage', () => {
     expect(await screen.findByRole('heading', { name: 'Leg Press' })).toBeInTheDocument();
   });
 
-  it('allows cancelling an active workout and returns to day preview', async () => {
+  it('marks an active workout with saved sets as aborted and returns to day preview', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');
     const exerciseId = createId('exercise');
     const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
 
     await db.workoutDays.add({
       id: dayId,
@@ -1516,7 +1517,7 @@ describe('WorkoutPage', () => {
     });
 
     await db.sessionExercises.add({
-      id: createId('session-exercise'),
+      id: sessionExerciseId,
       workoutSessionId: sessionId,
       dayExerciseId: createId('day-exercise'),
       exerciseName: 'Chest Press',
@@ -1530,6 +1531,14 @@ describe('WorkoutPage', () => {
       weightStep: 5,
       orderIndex: 0,
     });
+    await db.setResults.add({
+      id: createId('set-result'),
+      workoutSessionExerciseId: sessionExerciseId,
+      setNumber: 1,
+      status: 'success',
+      completedReps: 15,
+      usedWeight: 60,
+    });
 
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<WorkoutPage />);
@@ -1538,9 +1547,42 @@ describe('WorkoutPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Katkesta treening' }));
 
     await waitFor(async () => {
-      expect(await db.sessions.count()).toBe(0);
+      expect(await db.sessions.get(sessionId)).toMatchObject({ status: 'aborted' });
+      expect(await db.sessionExercises.count()).toBe(1);
+      expect(await db.setResults.count()).toBe(1);
       expect(screen.getByText('Valitud päev')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Alusta treeningut' })).toBeInTheDocument();
+    });
+  });
+
+  it('deletes an active workout with no saved sets', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const exerciseId = createId('exercise');
+    const sessionId = createId('session');
+
+    await db.workoutDays.add({ id: dayId, name: 'Päev 1', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.exercises.add({ id: exerciseId, name: 'Chest Press', machineNumber: '12', notes: '', createdAt: timestamp, updatedAt: timestamp });
+    await db.dayExercises.add({
+      id: createId('day-exercise'), workoutDayId: dayId, exerciseId, sortOrder: 0, targetSets: 3, successesRequired: 1,
+      repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp,
+    });
+    await db.sessions.add({ id: sessionId, workoutDayId: dayId, performedAt: timestamp, status: 'active', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({
+      id: createId('session-exercise'), workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseName: 'Chest Press', machineNumber: '12',
+      targetSets: 3, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, orderIndex: 0,
+    });
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Katkesta treening' }));
+
+    await waitFor(async () => {
+      expect(await db.sessions.get(sessionId)).toBeUndefined();
+      expect(await db.sessionExercises.count()).toBe(0);
+      expect(screen.getByText('Valitud päev')).toBeInTheDocument();
     });
   });
 

@@ -561,11 +561,21 @@ async function moveSessionExerciseToNext(
 
 async function cancelWorkout(sessionId: string) {
   const sessionExerciseIds = await db.sessionExercises.where('workoutSessionId').equals(sessionId).primaryKeys();
+  const setResultCount = sessionExerciseIds.length === 0
+    ? 0
+    : await db.setResults.where('workoutSessionExerciseId').anyOf(sessionExerciseIds as string[]).count();
 
-  await db.transaction('rw', db.setResults, db.sessionExercises, db.sessions, async () => {
-    if (sessionExerciseIds.length > 0) {
-      await db.setResults.where('workoutSessionExerciseId').anyOf(sessionExerciseIds as string[]).delete();
-    }
+  if (setResultCount > 0) {
+    const timestamp = nowIso();
+    await db.sessions.update(sessionId, {
+      status: 'aborted',
+      endedAtUtc: timestamp,
+      updatedAt: timestamp,
+    });
+    return;
+  }
+
+  await db.transaction('rw', db.sessionExercises, db.sessions, async () => {
     await db.sessionExercises.where('workoutSessionId').equals(sessionId).delete();
     await db.sessions.delete(sessionId);
   });
