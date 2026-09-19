@@ -31,7 +31,7 @@ export default defineConfig({
         description: 'Offline-first treeningute abiline',
         theme_color: '#0b1120',
         background_color: '#020617',
-        display: 'standalone',
+        display: 'fullscreen',
         orientation: 'portrait',
         start_url: '/',
         lang: 'et',
