@@ -309,6 +309,7 @@ describe('WorkoutPage', () => {
     const timestamp = nowIso();
     const dayId = createId('day');
     const exerciseId = createId('exercise');
+    const fixedExerciseId = createId('exercise');
 
     await db.workoutDays.add({
       id: dayId,
@@ -328,23 +329,49 @@ describe('WorkoutPage', () => {
       createdAt: timestamp,
       updatedAt: timestamp,
     });
-
-    await db.dayExercises.add({
-      id: createId('day-exercise'),
-      workoutDayId: dayId,
-      exerciseId,
-      sortOrder: 0,
-      targetSets: 3,
-      successesRequired: 1,
-      repMode: 'range',
-      targetRepsMin: 10,
-      targetRepsMax: 15,
-      currentWeight: 60,
-      weightStep: 5,
-      restSeconds: 90,
+    await db.exercises.add({
+      id: fixedExerciseId,
+      name: 'Leg Press',
+      machineNumber: '17',
+      notes: '',
       createdAt: timestamp,
       updatedAt: timestamp,
     });
+
+    await db.dayExercises.bulkAdd([
+      {
+        id: createId('day-exercise'),
+        workoutDayId: dayId,
+        exerciseId,
+        sortOrder: 0,
+        targetSets: 3,
+        successesRequired: 1,
+        repMode: 'range',
+        targetRepsMin: 10,
+        targetRepsMax: 15,
+        currentWeight: 60,
+        weightStep: 5,
+        restSeconds: 90,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+      {
+        id: createId('day-exercise'),
+        workoutDayId: dayId,
+        exerciseId: fixedExerciseId,
+        sortOrder: 1,
+        targetSets: 2,
+        successesRequired: 1,
+        repMode: 'fixed',
+        targetRepsMin: 8,
+        targetRepsMax: 8,
+        currentWeight: 40,
+        weightStep: 5,
+        restSeconds: 90,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    ]);
 
     render(<WorkoutPage />);
 
@@ -353,8 +380,12 @@ describe('WorkoutPage', () => {
     expect(await screen.findByText('Õlale rahulik tempo')).toBeInTheDocument();
     expect(screen.getByText('Päeva harjutused')).toBeInTheDocument();
     expect(await screen.findByText('Chest Press')).toBeInTheDocument();
+    expect(screen.getByText('Leg Press')).toBeInTheDocument();
     expect(screen.queryByText('Masin #12')).not.toBeInTheDocument();
-    expect(screen.queryByText('3 x 10-15 x 60 kg')).not.toBeInTheDocument();
+    expect(screen.getByText('Vahemik')).toBeInTheDocument();
+    expect(screen.getByText('Kindel')).toBeInTheDocument();
+    expect(screen.getByText('3 x 10-15 x 60 kg')).toBeInTheDocument();
+    expect(screen.getByText('2 x 8 x 40 kg')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Alusta treeningut' })).toBeInTheDocument();
   });
 

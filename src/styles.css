@@ -803,6 +803,28 @@ textarea {
   grid-template-columns: 1fr;
 }
 
+.workout-preview-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.target-type-badge {
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--accent-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.3rem 0.48rem;
+}
+
+.workout-preview-target {
+  display: block;
+  margin-top: 0.28rem;
+}
+
 .exercise-list-card strong,
 .workout-preview-card strong,
 .history-session strong {

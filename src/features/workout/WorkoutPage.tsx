@@ -40,6 +40,13 @@ type PersistedRestTimer = {
   endsAt: number;
 };
 
+function getPreviewTargetType(mode: RepMode) {
+  if (mode === 'range') return 'Vahemik';
+  if (mode === 'fixed') return 'Kindel';
+  if (mode === 'duration-range') return 'Kestuse vahemik';
+  return 'Kindel kestus';
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -996,7 +1003,13 @@ export function WorkoutPage() {
                 <ul className="stack-list preview-list">
                   {selectedDayExercises.map((item) => (
                     <li key={item.id} className="list-card workout-preview-card">
-                      <strong>{item.exercise?.name ?? 'Harjutus'}</strong>
+                      <div className="workout-preview-heading">
+                        <strong>{item.exercise?.name ?? 'Harjutus'}</strong>
+                        <span className="target-type-badge">{getPreviewTargetType(item.repMode)}</span>
+                      </div>
+                      <span className="muted workout-preview-target">
+                        {item.targetSets} x {formatTarget(item.repMode, item.targetRepsMin, item.targetRepsMax, item.currentWeight)}
+                      </span>
                     </li>
                   ))}
                 </ul>
