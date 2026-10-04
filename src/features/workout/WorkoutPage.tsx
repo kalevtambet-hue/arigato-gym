@@ -17,7 +17,7 @@ import type {
   WorkoutSessionRecord,
   WorkoutDayRecord,
 } from '../../db/types';
-import { computeNextTarget } from '../../domain/progression';
+import { decideProgression, qualifyingSetEvidence, type ProgressionDecision } from '../../domain/progression';
 import { countConsecutiveSuccesses } from '../../domain/consecutiveProgression';
 import { buildSessionExercises } from '../../domain/session';
 import { formatTarget, getSuccessValue, isDurationMode } from '../../domain/targetMode';
@@ -82,27 +82,16 @@ function writePersistedRestTimer(timer: PersistedRestTimer | null) {
   window.localStorage.setItem(REST_TIMER_STORAGE_KEY, JSON.stringify(timer));
 }
 
-function isSuccessfulAttempt(
-  item: Pick<
-    WorkoutSessionExerciseRecord,
-    'repMode' | 'targetSets' | 'targetRepsMin' | 'targetRepsMax'
-  >,
-  reps: number[],
-) {
-  const fullCount = reps.length === item.targetSets;
-  if (!fullCount) {
-    return false;
-  }
-
-  if (item.repMode === 'range' || item.repMode === 'duration-range') {
-    return reps.every((value) => value >= item.targetRepsMax);
-  }
-
-  return reps.every((value) => value >= item.targetRepsMin);
-}
-
-function getSortedReps(results: SetResultRecord[]) {
-  return results.sort((left, right) => left.setNumber - right.setNumber).map((entry) => entry.completedReps);
+function progressionTargetFor(item: WorkoutSessionExerciseRecord) {
+  return {
+    repMode: item.repMode,
+    targetSets: item.targetSets,
+    successesRequired: item.successesRequired,
+    targetRepsMin: item.targetRepsMin,
+    targetRepsMax: item.targetRepsMax,
+    currentWeight: item.currentWeight,
+    weightStep: item.weightStep,
+  };
 }
 
 function formatRepsValue(repMode: RepMode, min: number, max: number) {
@@ -174,28 +163,30 @@ function buildHistoricalAttempts(
       const rightSession = completedSessionsById.get(right.workoutSessionId);
       return (leftSession?.performedAt ?? '').localeCompare(rightSession?.performedAt ?? '');
     })
-    .map((entry) => ({
-      matchedTarget:
-        entry.repMode === item.repMode &&
-        entry.targetRepsMin === item.targetRepsMin &&
-        entry.targetRepsMax === item.targetRepsMax &&
-        entry.currentWeight === item.currentWeight,
-      success: isSuccessfulAttempt(entry, getSortedReps(historicalResultsByExercise.get(entry.id) ?? [])),
-    }));
+    .map((entry) => {
+      const evidence = qualifyingSetEvidence(
+        progressionTargetFor(entry),
+        historicalResultsByExercise.get(entry.id) ?? [],
+      );
+
+      return {
+        matchedTarget:
+          entry.repMode === item.repMode &&
+          entry.targetRepsMin === item.targetRepsMin &&
+          entry.targetRepsMax === item.targetRepsMax &&
+          entry.currentWeight === item.currentWeight,
+        success: evidence.successful && evidence.load.source !== 'mixed-actual-loads',
+      };
+    });
 }
 
-function shouldAdvanceTarget(
+function progressionDecisionFor(
   item: WorkoutSessionExerciseRecord,
-  reps: number[],
+  results: SetResultRecord[],
   completedSessions: WorkoutSessionRecord[],
   historicalSessionExercises: WorkoutSessionExerciseRecord[],
   historicalResultsByExercise: Map<string, SetResultRecord[]>,
 ) {
-  const currentSuccess = isSuccessfulAttempt(item, reps);
-  if (!currentSuccess) {
-    return false;
-  }
-
   const historicalAttempts = buildHistoricalAttempts(
     item,
     completedSessions,
@@ -203,10 +194,11 @@ function shouldAdvanceTarget(
     historicalResultsByExercise,
   );
 
-  return (
-    countConsecutiveSuccesses([...historicalAttempts, { matchedTarget: true, success: currentSuccess }]) >=
-    item.successesRequired
-  );
+  return decideProgression({
+    target: progressionTargetFor(item),
+    results,
+    previousConsecutiveSuccesses: countConsecutiveSuccesses(historicalAttempts),
+  });
 }
 
 async function startWorkout(workoutDayId: string) {
@@ -454,27 +446,14 @@ async function completeWorkout(
         continue;
       }
 
-      const reps = getSortedReps(resultsByExercise.get(item.id) ?? []);
-      const shouldAdvance = shouldAdvanceTarget(
+      const decision = progressionDecisionFor(
         item,
-        reps,
+        resultsByExercise.get(item.id) ?? [],
         completedSessions,
         historicalSessionExercises,
         historicalResultsByExercise,
       );
-
-      const nextTarget = computeNextTarget(
-        {
-          repMode: item.repMode,
-          targetSets: item.targetSets,
-          successesRequired: item.successesRequired,
-          targetRepsMin: item.targetRepsMin,
-          targetRepsMax: item.targetRepsMax,
-          currentWeight: item.currentWeight,
-          weightStep: item.weightStep,
-        },
-        shouldAdvance ? reps : [],
-      );
+      const nextTarget = decision.nextTarget;
 
       await addExerciseChangeEvent({
         exerciseId: dayExercise.exerciseId,
@@ -628,7 +607,7 @@ export function WorkoutPage() {
     Array<{
       id: string;
       name: string;
-      nextTarget: ReturnType<typeof computeNextTarget>;
+      decision: ProgressionDecision;
     }>
   >([]);
   const [lastSavedSet, setLastSavedSet] = useState<{
@@ -1577,10 +1556,9 @@ export function WorkoutPage() {
               }
 
               const nextSummary = (sessionExercises ?? []).map((item) => {
-                const reps = getSortedReps(currentResultsByExercise.get(item.id) ?? []);
-                const shouldAdvance = shouldAdvanceTarget(
+                const decision = progressionDecisionFor(
                   item,
-                  reps,
+                  currentResultsByExercise.get(item.id) ?? [],
                   completedSessions,
                   historicalSessionExercises,
                   historicalResultsByExercise,
@@ -1589,18 +1567,7 @@ export function WorkoutPage() {
                 return {
                   id: item.id,
                   name: item.exerciseName,
-                  nextTarget: computeNextTarget(
-                    {
-                      repMode: item.repMode,
-                      targetSets: item.targetSets,
-                      successesRequired: item.successesRequired,
-                      targetRepsMin: item.targetRepsMin,
-                      targetRepsMax: item.targetRepsMax,
-                      currentWeight: item.currentWeight,
-                      weightStep: item.weightStep,
-                    },
-                    shouldAdvance ? reps : [],
-                  ),
+                  decision,
                 };
               });
 
@@ -1641,12 +1608,12 @@ export function WorkoutPage() {
               <li key={item.id} className="list-card">
                 <strong>{item.name}</strong>
                 <span>
-                  {item.nextTarget.targetSets} x{' '}
+                  {item.decision.nextTarget.targetSets} x{' '}
                   {formatTarget(
-                    item.nextTarget.repMode,
-                    item.nextTarget.targetRepsMin,
-                    item.nextTarget.targetRepsMax,
-                    item.nextTarget.currentWeight,
+                    item.decision.nextTarget.repMode,
+                    item.decision.nextTarget.targetRepsMin,
+                    item.decision.nextTarget.targetRepsMax,
+                    item.decision.nextTarget.currentWeight,
                   )}
                 </span>
               </li>
