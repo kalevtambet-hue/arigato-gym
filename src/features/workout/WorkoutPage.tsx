@@ -1652,6 +1652,7 @@ export function WorkoutPage() {
                     item.decision.nextTarget.currentWeight,
                   )}
                 </span>
+                <p className="progression-copy">{item.decision.explanation}</p>
               </li>
             ))}
           </ul>

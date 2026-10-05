@@ -1654,6 +1654,7 @@ describe('WorkoutPage', () => {
 
     expect(await screen.findByText('Järgmine siht')).toBeInTheDocument();
     expect(screen.getByText('3 x 10-15 x 60 kg')).toBeInTheDocument();
+    expect(screen.getByText(/Õnnestumine on kirjas, kuid enne tõusu on vaja veel järjestikust õnnestumist/)).toBeInTheDocument();
 
     await waitFor(async () => {
       expect((await db.dayExercises.get(dayExerciseId))?.currentWeight).toBe(60);
@@ -2226,6 +2227,7 @@ describe('WorkoutPage', () => {
 
     expect(await screen.findByText('Järgmine siht')).toBeInTheDocument();
     expect(screen.getByText('3 x 10-15 x 50 kg')).toBeInTheDocument();
+    expect(screen.getByText(/Mitme tegeliku tööraskuse tõttu automaatset raskuse tõusu ei tehtud/)).toBeInTheDocument();
     await waitFor(async () => {
       expect((await db.dayExercises.get(dayExerciseId))?.currentWeight).toBe(50);
     });
