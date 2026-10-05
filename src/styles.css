@@ -1994,3 +1994,21 @@ textarea:focus-visible {
     width: 100%;
   }
 }
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text-strong);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.checkbox-field input[type='checkbox'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
