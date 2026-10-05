@@ -354,6 +354,21 @@ describe('HistoryPage', () => {
     await waitFor(() => expect(screen.getByLabelText('Filtreeri harjutuse järgi')).toHaveValue('New Chest Press'));
   });
 
+  it('uses an exact renamed exercise filter for both historical rows and its PR summary', async () => {
+    const timestamp = nowIso();
+    await db.exercises.add({ id: 'chest', name: 'New Chest Press', machineNumber: '12', notes: '', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.add({ id: 'session', workoutDayId: 'day', performedAt: timestamp, status: 'completed', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({ id: 'historical', workoutSessionId: 'session', dayExerciseId: 'day-exercise', exerciseId: 'chest', exerciseName: 'Old Chest Press', machineNumber: '12', targetSets: 1, successesRequired: 1, repMode: 'fixed', targetRepsMin: 10, targetRepsMax: 10, currentWeight: 60, weightStep: 5, orderIndex: 0 });
+    await db.setResults.add({ id: 'historical-set', workoutSessionExerciseId: 'historical', setNumber: 1, status: 'success', completedReps: 10, usedWeight: 80 });
+
+    render(<MemoryRouter><HistoryPage /></MemoryRouter>);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Filtreeri harjutuse järgi'), 'New Chest Press');
+
+    expect(await screen.findByTestId('history-exercise-historical')).toBeInTheDocument();
+    expect(screen.getByTestId('exercise-performance-summary')).toHaveTextContent('Parim raskus: 80 kg');
+  });
+
   it('shows a not-found filtered state for a deleted or unknown exercise id', async () => {
     const timestamp = nowIso();
     const sessionId = createId('session');
@@ -384,5 +399,44 @@ describe('HistoryPage', () => {
     await user.click(screen.getByRole('link', { name: 'Eemalda filter' }));
 
     expect(await screen.findByTestId('history-exercise-leg-row')).toBeInTheDocument();
+  });
+
+  it('shows a load PR summary for the explicitly selected exercise only', async () => {
+    const timestamp = nowIso();
+    await db.exercises.add({ id: 'chest', name: 'Chest Press', machineNumber: '12', notes: '', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.add({ id: 'session', workoutDayId: 'day', performedAt: timestamp, status: 'completed', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({ id: 'chest-session', workoutSessionId: 'session', dayExerciseId: 'day-exercise', exerciseId: 'chest', exerciseName: 'Chest Press', machineNumber: '12', targetSets: 2, successesRequired: 1, repMode: 'range', targetRepsMin: 8, targetRepsMax: 12, currentWeight: 70, weightStep: 2.5, orderIndex: 0 });
+    await db.setResults.bulkAdd([
+      { id: 'best-load', workoutSessionExerciseId: 'chest-session', setNumber: 1, status: 'success', completedReps: 6, usedWeight: 82.5 },
+      { id: 'legacy-null', workoutSessionExerciseId: 'chest-session', setNumber: 2, status: 'success', completedReps: 20, usedWeight: null },
+    ]);
+
+    render(<MemoryRouter initialEntries={['/ajalugu?exerciseId=chest']}><HistoryPage /></MemoryRouter>);
+
+    const summary = await screen.findByTestId('exercise-performance-summary');
+    expect(summary).toHaveTextContent('Parim raskus: 82.5 kg');
+    expect(summary).toHaveTextContent('Parim 82.5 kg juures: 6 kordust');
+    expect(summary).toHaveTextContent('Edukaid tööseeriaid: 2');
+  });
+
+  it('shows a duration summary for an exactly resolved text filter but not ambiguous filters', async () => {
+    const timestamp = nowIso();
+    await db.exercises.bulkAdd([
+      { id: 'plank', name: 'Plank', machineNumber: '', notes: '', createdAt: timestamp, updatedAt: timestamp },
+      { id: 'side-plank', name: 'Side Plank', machineNumber: '', notes: '', createdAt: timestamp, updatedAt: timestamp },
+    ]);
+    await db.sessions.add({ id: 'duration-session', workoutDayId: 'day', performedAt: timestamp, status: 'completed', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({ id: 'plank-session', workoutSessionId: 'duration-session', dayExerciseId: 'day-exercise', exerciseId: 'plank', exerciseName: 'Plank', machineNumber: '', targetSets: 1, successesRequired: 1, repMode: 'duration-fixed', targetRepsMin: 60, targetRepsMax: 60, currentWeight: 0, weightStep: 0, orderIndex: 0 });
+    await db.setResults.add({ id: 'plank-result', workoutSessionExerciseId: 'plank-session', setNumber: 1, status: 'success', completedReps: 75, usedWeight: 100 });
+
+    render(<MemoryRouter><HistoryPage /></MemoryRouter>);
+    const user = userEvent.setup();
+    const filter = screen.getByLabelText('Filtreeri harjutuse järgi');
+    await user.type(filter, 'Plank');
+    expect(await screen.findByTestId('exercise-performance-summary')).toHaveTextContent('Pikim kestus: 75 min');
+
+    await user.clear(filter);
+    await user.type(filter, 'pl');
+    await waitFor(() => expect(screen.queryByTestId('exercise-performance-summary')).not.toBeInTheDocument());
   });
 });

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from './appDb';
 import { correctHistoricalSetResult } from './progressionRecompute';
+import { deriveExercisePerformance } from '../domain/exercisePerformance';
 
 describe('correctHistoricalSetResult', () => {
   beforeEach(async () => {
@@ -53,5 +54,31 @@ describe('correctHistoricalSetResult', () => {
 
     await expect(correctHistoricalSetResult('orphan-exercise-1', { status: 'failed', completedReps: 12 })).rejects.toThrow('Progression owner');
     expect(await db.setResults.get('orphan-exercise-1')).toMatchObject({ status: 'success', completedReps: 15 });
+  });
+
+  it('changes derived highest-load evidence after a historical load correction without a PR counter', async () => {
+    const timestamp = '2026-01-01T10:00:00.000Z';
+    await db.workoutDays.add({ id: 'day', name: 'Päev', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.dayExercises.add({ id: 'owner', workoutDayId: 'day', exerciseId: 'chest', sortOrder: 0, targetSets: 1, successesRequired: 1, repMode: 'fixed', targetRepsMin: 10, targetRepsMax: 10, currentWeight: 80, weightStep: 2.5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.bulkAdd([
+      { id: 'first', workoutDayId: 'day', performedAt: '2026-01-01T10:00:00.000Z', status: 'completed', createdAt: timestamp, updatedAt: timestamp },
+      { id: 'second', workoutDayId: 'day', performedAt: '2026-01-02T10:00:00.000Z', status: 'completed', createdAt: timestamp, updatedAt: timestamp },
+    ]);
+    await db.sessionExercises.bulkAdd([
+      { id: 'first-exercise', workoutSessionId: 'first', dayExerciseId: 'owner', exerciseId: 'chest', exerciseName: 'Chest Press', machineNumber: '12', targetSets: 1, successesRequired: 1, repMode: 'fixed', targetRepsMin: 10, targetRepsMax: 10, currentWeight: 85, weightStep: 2.5, orderIndex: 0 },
+      { id: 'second-exercise', workoutSessionId: 'second', dayExerciseId: 'owner', exerciseId: 'chest', exerciseName: 'Chest Press', machineNumber: '12', targetSets: 1, successesRequired: 1, repMode: 'fixed', targetRepsMin: 10, targetRepsMax: 10, currentWeight: 80, weightStep: 2.5, orderIndex: 0 },
+    ]);
+    await db.setResults.bulkAdd([
+      { id: 'first-set', workoutSessionExerciseId: 'first-exercise', setNumber: 1, status: 'success', completedReps: 10, usedWeight: 85 },
+      { id: 'second-set', workoutSessionExerciseId: 'second-exercise', setNumber: 1, status: 'success', completedReps: 10, usedWeight: 80 },
+    ]);
+
+    const before = deriveExercisePerformance({ exerciseId: 'chest', sessions: await db.sessions.toArray(), sessionExercises: await db.sessionExercises.toArray(), setResults: await db.setResults.toArray() });
+    expect(before).toMatchObject({ highestLoad: { value: 85, setResultId: 'first-set' } });
+
+    await correctHistoricalSetResult('first-set', { status: 'success', completedReps: 10, usedWeight: 75 });
+
+    const after = deriveExercisePerformance({ exerciseId: 'chest', sessions: await db.sessions.toArray(), sessionExercises: await db.sessionExercises.toArray(), setResults: await db.setResults.toArray() });
+    expect(after).toMatchObject({ highestLoad: { value: 80, setResultId: 'second-set' } });
   });
 });

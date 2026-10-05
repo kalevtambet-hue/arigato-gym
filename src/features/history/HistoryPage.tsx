@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { db } from '../../db/appDb';
+import { deriveExercisePerformance } from '../../domain/exercisePerformance';
 import { formatResultValue, formatTarget } from '../../domain/targetMode';
 
 function isHistoryExerciseComplete(item: {
@@ -39,6 +40,7 @@ function isHistoryExerciseFailed(
 export function HistoryPage() {
   const sessions = useLiveQuery(() => db.sessions.orderBy('performedAt').reverse().toArray(), []);
   const workoutDays = useLiveQuery(() => db.workoutDays.toArray(), []);
+  const exercises = useLiveQuery(() => db.exercises.toArray(), []);
   const sessionExercises = useLiveQuery(() => db.sessionExercises.toArray(), []);
   const setResults = useLiveQuery(() => db.setResults.toArray(), []);
   const [searchParams] = useSearchParams();
@@ -52,6 +54,14 @@ export function HistoryPage() {
   useEffect(() => {
     setExerciseFilter(exerciseId && selectedExercise ? selectedExercise.name : '');
   }, [exerciseId, selectedExercise]);
+
+  const resolvedPerformanceExerciseId = useMemo(() => {
+    if (exerciseId) return selectedExercise ? exerciseId : null;
+    const normalizedFilter = exerciseFilter.trim().toLocaleLowerCase();
+    if (!normalizedFilter) return null;
+    const exactMatches = (exercises ?? []).filter((exercise) => exercise.name.trim().toLocaleLowerCase() === normalizedFilter);
+    return exactMatches.length === 1 ? exactMatches[0].id : null;
+  }, [exerciseId, selectedExercise, exerciseFilter, exercises]);
 
   const items = useMemo(() => {
     const resultsByExercise = new Map<string, Array<{ status: 'success' | 'failed'; completedReps: number }>>();
@@ -67,13 +77,13 @@ export function HistoryPage() {
     return (sessions ?? []).map((session) => {
       const exercises = (sessionExercises ?? [])
         .filter((item) => item.workoutSessionId === session.id)
-        .filter((item) =>
-          exerciseId
-            ? item.exerciseId === exerciseId
-            : exerciseFilter.trim()
-              ? item.exerciseName.toLowerCase().includes(exerciseFilter.toLowerCase())
-            : true,
-        )
+        .filter((item) => {
+          if (exerciseId) return item.exerciseId === exerciseId;
+          if (resolvedPerformanceExerciseId) return item.exerciseId === resolvedPerformanceExerciseId;
+          return exerciseFilter.trim()
+            ? item.exerciseName.toLowerCase().includes(exerciseFilter.toLowerCase())
+            : true;
+        })
         .sort(
           (left, right) =>
             (left.performedOrder ?? left.orderIndex) - (right.performedOrder ?? right.orderIndex),
@@ -99,7 +109,17 @@ export function HistoryPage() {
         workoutDayName: workoutDays?.find((day) => day.id === session.workoutDayId)?.name ?? 'Treeningpäev',
       };
     });
-  }, [sessions, workoutDays, sessionExercises, setResults, exerciseFilter, exerciseId]);
+  }, [sessions, workoutDays, sessionExercises, setResults, exerciseFilter, exerciseId, resolvedPerformanceExerciseId]);
+
+  const performance = useMemo(() => {
+    if (!resolvedPerformanceExerciseId || !sessions || !sessionExercises || !setResults) return null;
+    return deriveExercisePerformance({
+      exerciseId: resolvedPerformanceExerciseId,
+      sessions,
+      sessionExercises,
+      setResults,
+    });
+  }, [resolvedPerformanceExerciseId, sessions, sessionExercises, setResults]);
 
   return (
     <section className="page history-page">
@@ -116,6 +136,20 @@ export function HistoryPage() {
         </label>
       </div>
       {exerciseId && selectedExercise === null ? <p className="empty-card">Valitud harjutust ei leitud.</p> : null}
+      {performance ? (
+        <section className="panel compact-panel" data-testid="exercise-performance-summary" aria-label="Harjutuse rekordid">
+          {performance.kind === 'repetition' ? (
+            <>
+              {performance.highestLoad ? <p>Parim raskus: {performance.highestLoad.value} kg</p> : null}
+              {performance.bestRepsAtHighestLoad ? <p>Parim {performance.bestRepsAtHighestLoad.load} kg juures: {performance.bestRepsAtHighestLoad.value} kordust</p> : null}
+            </>
+          ) : (
+            <p>Pikim kestus: {formatResultValue('duration-fixed', performance.longestDuration.value)}</p>
+          )}
+          <p>Edukaid tööseeriaid: {performance.successfulWorkSetCount}</p>
+          <p>Treeninguid: {performance.completedSessionCount}</p>
+        </section>
+      ) : null}
       <div className="stack history-list">
         {items.map(({ session, exercises, completedExercises, workoutDayName }) => (
           <details key={session.id} className="panel history-session compact-panel" data-testid={`history-session-${session.id}`}>
