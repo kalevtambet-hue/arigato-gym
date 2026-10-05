@@ -10,6 +10,33 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+async function seedActiveWorkoutWithSavedSet({ savedSets = 1 }: { savedSets?: number } = {}) {
+  const timestamp = nowIso();
+  const dayId = createId('day');
+  const exerciseId = createId('exercise');
+  const dayExerciseId = createId('day-exercise');
+  const sessionId = createId('session');
+  const sessionExerciseId = createId('session-exercise');
+  await db.workoutDays.add({ id: dayId, name: 'Päev 1', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+  await db.exercises.add({ id: exerciseId, name: 'Chest Press', machineNumber: '12', notes: '', createdAt: timestamp, updatedAt: timestamp });
+  await db.dayExercises.add({ id: dayExerciseId, workoutDayId: dayId, exerciseId, sortOrder: 0, targetSets: 3, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp });
+  await db.sessions.add({ id: sessionId, workoutDayId: dayId, performedAt: timestamp, status: 'active', createdAt: timestamp, updatedAt: timestamp });
+  await db.sessionExercises.add({ id: sessionExerciseId, workoutSessionId: sessionId, dayExerciseId, exerciseId, exerciseName: 'Chest Press', machineNumber: '12', targetSets: 3, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, orderIndex: 0 });
+  for (let setNumber = 1; setNumber <= savedSets; setNumber += 1) {
+    await db.setResults.add({ id: `${sessionExerciseId}-${setNumber}`, workoutSessionExerciseId: sessionExerciseId, setNumber, status: 'failed', completedReps: 8, usedWeight: 60 });
+  }
+  return { dayExerciseId, sessionExerciseId };
+}
+
+async function openSetEditor() {
+  let editor: HTMLElement | null = null;
+  await waitFor(async () => {
+    fireEvent.click(await screen.findByTestId('set-dot-1'));
+    editor = screen.getByText('Muuda seeriat 1');
+  });
+  return editor!.closest('.inline-set-editor') as HTMLElement;
+}
+
 describe('WorkoutPage', () => {
   beforeEach(async () => {
     window.localStorage.clear();
@@ -1400,12 +1427,130 @@ describe('WorkoutPage', () => {
     expect(editor).toBeTruthy();
     const editorCard = editor!.closest('.inline-set-editor') as HTMLElement | null;
     expect(editorCard).toBeTruthy();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     await user.click(within(editorCard!).getByRole('button', { name: 'Kustuta seeria' }));
 
+    expect(confirm).toHaveBeenCalledWith('Kustutada seeria 1? Seda ei saa tagasi võtta.');
     await waitFor(async () => {
       expect(await db.setResults.get(`${sessionExerciseId}-1`)).toBeUndefined();
     });
     expect(screen.getByTestId('set-dot-1')).toHaveClass('set-dot-pending');
+    confirm.mockRestore();
+  });
+
+  it('keeps a saved set when set deletion is not confirmed', async () => {
+    const { sessionExerciseId } = await seedActiveWorkoutWithSavedSet();
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+    const editorCard = await openSetEditor();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    await user.click(within(editorCard).getByRole('button', { name: 'Kustuta seeria' }));
+
+    expect(confirm).toHaveBeenCalled();
+    expect(await db.setResults.get(`${sessionExerciseId}-1`)).toMatchObject({ status: 'failed', completedReps: 8 });
+    expect(within(editorCard).getByText('Muuda seeriat 1')).toBeInTheDocument();
+    confirm.mockRestore();
+  });
+
+  it('rejects a blank actual result when editing a saved set', async () => {
+    const { sessionExerciseId } = await seedActiveWorkoutWithSavedSet();
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+    const editorCard = await openSetEditor();
+
+    await user.clear(within(editorCard).getByLabelText('Tegelikud kordused'));
+    await user.click(within(editorCard).getByRole('button', { name: 'Salvesta muudatus' }));
+
+    expect(within(editorCard).getByRole('alert')).toHaveTextContent('Sisesta kehtiv tegelik tulemus.');
+    expect(await db.setResults.get(`${sessionExerciseId}-1`)).toMatchObject({ status: 'failed', completedReps: 8 });
+
+    await user.type(within(editorCard).getByLabelText('Tegelikud kordused'), '-1');
+    await user.click(within(editorCard).getByRole('button', { name: 'Salvesta muudatus' }));
+    expect(within(editorCard).getByRole('alert')).toHaveTextContent('Sisesta kehtiv tegelik tulemus.');
+    expect((await db.setResults.get(`${sessionExerciseId}-1`))?.completedReps).toBe(8);
+
+    await user.clear(within(editorCard).getByLabelText('Tegelikud kordused'));
+    await user.type(within(editorCard).getByLabelText('Tegelikud kordused'), '9');
+    expect(within(editorCard).queryByRole('alert')).not.toBeInTheDocument();
+    await user.click(within(editorCard).getByRole('button', { name: 'Salvesta muudatus' }));
+
+    await waitFor(async () => {
+      expect((await db.setResults.get(`${sessionExerciseId}-1`))?.completedReps).toBe(9);
+    });
+    expect(screen.queryByText('Muuda seeriat 1')).not.toBeInTheDocument();
+  });
+
+  it('shows a visible error and saves nothing for invalid target edits', async () => {
+    const { sessionExerciseId, dayExerciseId } = await seedActiveWorkoutWithSavedSet();
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: /^Muuda sihti$/i }));
+    const saveTarget = () => user.click(screen.getByRole('button', { name: 'Salvesta siht' }));
+
+    await user.clear(screen.getByLabelText('Seeriate arv'));
+    await saveTarget();
+    expect(screen.getByRole('alert')).toHaveTextContent('Täida kõik väljad.');
+
+    await user.type(screen.getByLabelText('Seeriate arv'), '0');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await saveTarget();
+    expect(screen.getByRole('alert')).toHaveTextContent('Seeriate arv peab olema vähemalt 1.');
+
+    await user.clear(screen.getByLabelText('Seeriate arv'));
+    await user.type(screen.getByLabelText('Seeriate arv'), '3');
+    await user.clear(screen.getByLabelText('Max kordused'));
+    await user.type(screen.getByLabelText('Max kordused'), '5');
+    await saveTarget();
+    expect(screen.getByRole('alert')).toHaveTextContent('Maksimum ei tohi olla väiksem kui miinimum.');
+
+    await user.clear(screen.getByLabelText('Max kordused'));
+    await user.type(screen.getByLabelText('Max kordused'), '15');
+    await user.clear(screen.getByLabelText('Raskus (kg)'));
+    await user.type(screen.getByLabelText('Raskus (kg)'), '-5');
+    await saveTarget();
+    expect(screen.getByRole('alert')).toHaveTextContent('Raskus ja puhkeaeg ei tohi olla negatiivsed.');
+
+    expect(screen.getByRole('heading', { name: 'Muuda sihti' })).toBeInTheDocument();
+    expect(await db.sessionExercises.get(sessionExerciseId)).toMatchObject({
+      targetSets: 3, targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60,
+    });
+    expect(await db.dayExercises.get(dayExerciseId)).toMatchObject({
+      targetSets: 3, targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, restSeconds: 90,
+    });
+    expect(await db.exerciseEvents.count()).toBe(0);
+
+    await user.clear(screen.getByLabelText('Raskus (kg)'));
+    await user.type(screen.getByLabelText('Raskus (kg)'), '65');
+    await saveTarget();
+    await waitFor(async () => {
+      expect((await db.sessionExercises.get(sessionExerciseId))?.currentWeight).toBe(65);
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('rejects fewer target sets than already saved sets with a visible message', async () => {
+    const { sessionExerciseId } = await seedActiveWorkoutWithSavedSet({ savedSets: 2 });
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: /^Muuda sihti$/i }));
+    await user.clear(screen.getByLabelText('Seeriate arv'));
+    await user.type(screen.getByLabelText('Seeriate arv'), '1');
+    await user.click(screen.getByRole('button', { name: 'Salvesta siht' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Seeriate arv peab olema vähemalt 2.');
+    expect((await db.sessionExercises.get(sessionExerciseId))?.targetSets).toBe(3);
+  });
+
+  it('points to Harjutused and Kavad when no active workout days exist', async () => {
+    const timestamp = nowIso();
+    await db.workoutDays.add({ id: createId('day'), name: 'Arhiivis', notes: '', sortOrder: 0, isArchived: true, createdAt: timestamp, updatedAt: timestamp });
+
+    render(<WorkoutPage />);
+
+    expect(await screen.findByText('Lisa harjutused lehel Harjutused ja treeningpäevad lehel Kavad.')).toBeInTheDocument();
   });
 
   it('allows moving an upcoming exercise to be next in the active workout', async () => {

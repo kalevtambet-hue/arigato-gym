@@ -609,6 +609,8 @@ export function WorkoutPage() {
     reps: string;
   } | null>(null);
   const [failureFormError, setFailureFormError] = useState<string | null>(null);
+  const [targetEditError, setTargetEditError] = useState<string | null>(null);
+  const [setEditError, setSetEditError] = useState<string | null>(null);
   const [weightEditTarget, setWeightEditTarget] = useState<{
     sessionExerciseId: string;
     exerciseId: string;
@@ -922,7 +924,13 @@ export function WorkoutPage() {
     );
   }
 
+  function updateTargetDraft(update: (current: typeof weightEditTarget) => typeof weightEditTarget) {
+    setTargetEditError(null);
+    setWeightEditTarget(update);
+  }
+
   function openTargetEditor(sessionExercise: WorkoutSessionExerciseRecord, exerciseId: string) {
+    setTargetEditError(null);
     setWeightEditTarget({
       sessionExerciseId: sessionExercise.id,
       exerciseId,
@@ -985,7 +993,7 @@ export function WorkoutPage() {
         <>
           {workoutDays?.length === 0 ? (
             <p className="empty-card">
-              Lisa esmalt Harjutused lehel treeningpäevad ja harjutused.
+              Lisa harjutused lehel Harjutused ja treeningpäevad lehel Kavad.
             </p>
           ) : (
             <>
@@ -1103,6 +1111,7 @@ export function WorkoutPage() {
             onSetClick={(setNumber) => {
               const targetResult = nextExerciseResults.find((item) => item.setNumber === setNumber);
               if (!targetResult) return;
+              setSetEditError(null);
               setSetEditTarget({
                 id: targetResult.id,
                 sessionExerciseId: targetResult.workoutSessionExerciseId,
@@ -1144,7 +1153,7 @@ export function WorkoutPage() {
                     min="1"
                     value={weightEditTarget.targetSets}
                     onChange={(event) =>
-                      setWeightEditTarget((current) =>
+                      updateTargetDraft((current) =>
                         current ? { ...current, targetSets: event.target.value } : current,
                       )
                     }
@@ -1156,7 +1165,7 @@ export function WorkoutPage() {
                     id="sessionRepMode"
                     value={weightEditTarget.repMode}
                     onChange={(event) =>
-                      setWeightEditTarget((current) =>
+                      updateTargetDraft((current) =>
                         current ? { ...current, repMode: event.target.value as RepMode } : current,
                       )
                     }
@@ -1182,7 +1191,7 @@ export function WorkoutPage() {
                     min="1"
                     value={weightEditTarget.targetRepsMin}
                     onChange={(event) =>
-                      setWeightEditTarget((current) =>
+                      updateTargetDraft((current) =>
                         current ? { ...current, targetRepsMin: event.target.value } : current,
                       )
                     }
@@ -1198,7 +1207,7 @@ export function WorkoutPage() {
                       min="1"
                       value={weightEditTarget.targetRepsMax}
                       onChange={(event) =>
-                        setWeightEditTarget((current) =>
+                        updateTargetDraft((current) =>
                           current ? { ...current, targetRepsMax: event.target.value } : current,
                         )
                       }
@@ -1215,7 +1224,7 @@ export function WorkoutPage() {
                       min="0"
                       value={weightEditTarget.currentWeight}
                       onChange={(event) =>
-                        setWeightEditTarget((current) =>
+                        updateTargetDraft((current) =>
                           current ? { ...current, currentWeight: event.target.value } : current,
                         )
                       }
@@ -1231,7 +1240,7 @@ export function WorkoutPage() {
                     min="0"
                     value={weightEditTarget.restSeconds}
                     onChange={(event) =>
-                      setWeightEditTarget((current) =>
+                      updateTargetDraft((current) =>
                         current ? { ...current, restSeconds: event.target.value } : current,
                       )
                     }
@@ -1240,11 +1249,15 @@ export function WorkoutPage() {
                 <p className="muted note-copy">
                   Muudatus rakendub kohe käimasolevale harjutusele ja salvestatakse ka järgmise korra sihiks.
                 </p>
+                {targetEditError ? <p className="form-error" role="alert">{targetEditError}</p> : null}
                 <div className="button-row">
                   <button
                     type="button"
                     className="secondary-button"
-                    onClick={() => setWeightEditTarget(null)}
+                    onClick={() => {
+                      setTargetEditError(null);
+                      setWeightEditTarget(null);
+                    }}
                   >
                     Loobu
                   </button>
@@ -1259,30 +1272,57 @@ export function WorkoutPage() {
                         return;
                       }
 
+                      const hasMax =
+                        weightEditTarget.repMode === 'range' || weightEditTarget.repMode === 'duration-range';
+                      const hasWeight = !isDurationMode(weightEditTarget.repMode);
+                      const visibleValues = [
+                        weightEditTarget.targetSets,
+                        weightEditTarget.targetRepsMin,
+                        ...(hasMax ? [weightEditTarget.targetRepsMax] : []),
+                        ...(hasWeight ? [weightEditTarget.currentWeight] : []),
+                        weightEditTarget.restSeconds,
+                      ];
+                      if (visibleValues.some((value) => value.trim() === '')) {
+                        setTargetEditError('Täida kõik väljad.');
+                        return;
+                      }
+
                       const parsedTargetSets = Number(weightEditTarget.targetSets);
                       const parsedMin = Number(weightEditTarget.targetRepsMin);
-                      const parsedMax =
-                        weightEditTarget.repMode === 'range' || weightEditTarget.repMode === 'duration-range'
-                          ? Number(weightEditTarget.targetRepsMax)
-                          : parsedMin;
-                      const parsedWeight = isDurationMode(weightEditTarget.repMode)
-                        ? 0
-                        : Number(weightEditTarget.currentWeight);
+                      const parsedMax = hasMax ? Number(weightEditTarget.targetRepsMax) : parsedMin;
+                      const parsedWeight = hasWeight ? Number(weightEditTarget.currentWeight) : 0;
                       const parsedRestSeconds = Number(weightEditTarget.restSeconds);
                       const completedSetCount = nextExerciseResults.length;
+                      const minimumSets = Math.max(completedSetCount, 1);
 
                       if (
                         !Number.isFinite(parsedTargetSets) ||
                         !Number.isFinite(parsedMin) ||
                         !Number.isFinite(parsedMax) ||
                         !Number.isFinite(parsedWeight) ||
-                        !Number.isFinite(parsedRestSeconds) ||
-                        parsedTargetSets < Math.max(completedSetCount, 1) ||
-                        parsedMin < 1 ||
-                        parsedMax < parsedMin ||
-                        parsedWeight < 0 ||
-                        parsedRestSeconds < 0
+                        !Number.isFinite(parsedRestSeconds)
                       ) {
+                        setTargetEditError('Sisesta kõigisse väljadesse number.');
+                        return;
+                      }
+                      if (parsedTargetSets < minimumSets) {
+                        setTargetEditError(`Seeriate arv peab olema vähemalt ${minimumSets}.`);
+                        return;
+                      }
+                      if (parsedMin < 1) {
+                        setTargetEditError(
+                          isDurationMode(weightEditTarget.repMode)
+                            ? 'Kestus peab olema vähemalt 1 min.'
+                            : 'Kordusi peab olema vähemalt 1.',
+                        );
+                        return;
+                      }
+                      if (parsedMax < parsedMin) {
+                        setTargetEditError('Maksimum ei tohi olla väiksem kui miinimum.');
+                        return;
+                      }
+                      if (parsedWeight < 0 || parsedRestSeconds < 0) {
+                        setTargetEditError('Raskus ja puhkeaeg ei tohi olla negatiivsed.');
                         return;
                       }
 
@@ -1296,6 +1336,7 @@ export function WorkoutPage() {
                         currentWeight: parsedWeight,
                         restSeconds: parsedRestSeconds,
                       });
+                      setTargetEditError(null);
                       setWeightEditTarget(null);
                     }}
                   >
@@ -1351,20 +1392,27 @@ export function WorkoutPage() {
                       type="number"
                       inputMode="numeric"
                       value={setEditTarget.reps}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        setSetEditError(null);
                         setSetEditTarget((current) =>
                           current ? { ...current, reps: event.target.value } : current,
-                        )
-                      }
+                        );
+                      }}
                     />
                   </label>
                 ) : null}
+                {setEditError && setEditTarget.status === 'failed' ? <p className="form-error" role="alert">{setEditError}</p> : null}
                 <div className="button-row">
                   <button
                     type="button"
                     className="ghost-button"
                     onClick={async () => {
+                      if (!window.confirm(`Kustutada seeria ${setEditTarget.setNumber}? Seda ei saa tagasi võtta.`)) {
+                        return;
+                      }
                       await undoSetResult(setEditTarget.id);
+                      setLastSavedSet((current) => (current?.id === setEditTarget.id ? null : current));
+                      setSetEditError(null);
                       setSetEditTarget(null);
                     }}
                   >
@@ -1373,7 +1421,10 @@ export function WorkoutPage() {
                   <button
                     type="button"
                     className="secondary-button"
-                    onClick={() => setSetEditTarget(null)}
+                    onClick={() => {
+                      setSetEditError(null);
+                      setSetEditTarget(null);
+                    }}
                   >
                     Loobu
                   </button>
@@ -1381,17 +1432,26 @@ export function WorkoutPage() {
                     type="button"
                     className="primary-button"
                     onClick={async () => {
+                      let completedReps = getSuccessValue(
+                        nextExercise.repMode,
+                        nextExercise.targetRepsMin,
+                        nextExercise.targetRepsMax,
+                      );
+                      if (setEditTarget.status === 'failed') {
+                        const repsText = setEditTarget.reps.trim();
+                        const parsedReps = Number(repsText);
+                        if (!repsText || !Number.isFinite(parsedReps) || parsedReps < 0) {
+                          setSetEditError('Sisesta kehtiv tegelik tulemus.');
+                          return;
+                        }
+                        completedReps = parsedReps;
+                      }
+
                       await updateSetResult(setEditTarget.id, {
                         status: setEditTarget.status,
-                        completedReps:
-                          setEditTarget.status === 'success'
-                            ? getSuccessValue(
-                                nextExercise.repMode,
-                                nextExercise.targetRepsMin,
-                                nextExercise.targetRepsMax,
-                              )
-                            : Number(setEditTarget.reps || '0'),
+                        completedReps,
                       });
+                      setSetEditError(null);
                       setSetEditTarget(null);
                     }}
                   >

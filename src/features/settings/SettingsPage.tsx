@@ -78,9 +78,10 @@ export function SettingsPage() {
     {
       title: 'Kasutamine',
       content: [
-        'Lisa esmalt Kavad lehel baasharjutused ja treeningpäevad.',
-        'Seo harjutused päevadega ja määra seeriate arv, kordused või kestus ning raskus.',
-        'Päevakava-harjutuse juures saad määrata puhkeaja, raskussammu ja mitu edukat treeningut on vaja enne automaatset progressiooni.',
+        'Lisa harjutused lehel Harjutused ja treeningpäevad lehel Kavad.',
+        'Ava Kavad lehel päev, lisa sellele harjutused ja määra seeriate arv, kordused või kestus ning raskus.',
+        'Päeva harjutuse juures saad määrata raskussammu ja mitu järjestikust edukat treeningut on vaja enne sihi tõusu.',
+        'Puhkeaega saad muuta treeningu ajal nupuga Muuda sihti. Uued harjutused saavad Seadete vaikimisi puhkeaja.',
         'Treeningu lehel vali päev, alusta trenni ja märgi iga seeria eraldi tehtuks või ebaõnnestunuks.',
         'Kui vaja, saad aktiivse harjutuse ajal +/- nuppudega muuta raskust ja järgmised seeriad kasutavad uut raskust kohe.',
       ],

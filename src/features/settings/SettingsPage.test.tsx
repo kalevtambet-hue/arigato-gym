@@ -52,6 +52,18 @@ describe('SettingsPage', () => {
     expect(screen.getByText(`Versioon ${__APP_VERSION__} (${__APP_BUILD__})`)).toBeInTheDocument();
   });
 
+  it('describes where exercises, days and rest time are managed in the usage help', async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    await user.click(screen.getByText('Kasutamine'));
+
+    expect(screen.getByText('Lisa harjutused lehel Harjutused ja treeningpäevad lehel Kavad.')).toBeVisible();
+    expect(screen.getByText('Puhkeaega saad muuta treeningu ajal nupuga Muuda sihti. Uued harjutused saavad Seadete vaikimisi puhkeaja.')).toBeVisible();
+    expect(screen.queryByText(/Kavad lehel baasharjutused/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/saad määrata puhkeaja/)).not.toBeInTheDocument();
+  });
+
   it('shows collapsible help sections', () => {
     render(<SettingsPage />);
 
