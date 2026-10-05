@@ -2,8 +2,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { db } from '../../db/appDb';
+import { correctHistoricalSetResult } from '../../db/progressionRecompute';
+import type { SetResultRecord } from '../../db/types';
 import { deriveExercisePerformance } from '../../domain/exercisePerformance';
 import { formatResultValue, formatTarget } from '../../domain/targetMode';
+import { HistorySetEditor } from './HistorySetEditor';
 
 function isHistoryExerciseComplete(item: {
   repMode: 'fixed' | 'range' | 'duration-fixed' | 'duration-range';
@@ -50,6 +53,7 @@ export function HistoryPage() {
     return (await db.exercises.get(exerciseId)) ?? null;
   }, [exerciseId]);
   const [exerciseFilter, setExerciseFilter] = useState('');
+  const [editingSessionExerciseId, setEditingSessionExerciseId] = useState<string | null>(null);
 
   useEffect(() => {
     setExerciseFilter(exerciseId && selectedExercise ? selectedExercise.name : '');
@@ -64,13 +68,10 @@ export function HistoryPage() {
   }, [exerciseId, selectedExercise, exerciseFilter, exercises]);
 
   const items = useMemo(() => {
-    const resultsByExercise = new Map<string, Array<{ status: 'success' | 'failed'; completedReps: number }>>();
+    const resultsByExercise = new Map<string, SetResultRecord[]>();
     for (const result of setResults ?? []) {
       const list = resultsByExercise.get(result.workoutSessionExerciseId) ?? [];
-      list.push({
-        status: result.status,
-        completedReps: result.completedReps,
-      });
+      list.push(result);
       resultsByExercise.set(result.workoutSessionExerciseId, list);
     }
 
@@ -96,6 +97,7 @@ export function HistoryPage() {
             ...item,
             isComplete,
             isFailed: isHistoryExerciseFailed(session.status, isComplete, rawResults),
+            results: rawResults,
             reps: rawResults
               .map((value) => formatResultValue(item.repMode, value.completedReps))
               .join(' / '),
@@ -110,6 +112,15 @@ export function HistoryPage() {
       };
     });
   }, [sessions, workoutDays, sessionExercises, setResults, exerciseFilter, exerciseId, resolvedPerformanceExerciseId]);
+
+  const editingSessionExercise = useMemo(
+    () => (sessionExercises ?? []).find((item) => item.id === editingSessionExerciseId) ?? null,
+    [sessionExercises, editingSessionExerciseId],
+  );
+  const editingResults = useMemo(
+    () => editingSessionExerciseId ? (setResults ?? []).filter((item) => item.workoutSessionExerciseId === editingSessionExerciseId) : [],
+    [setResults, editingSessionExerciseId],
+  );
 
   const performance = useMemo(() => {
     if (!resolvedPerformanceExerciseId || !sessions || !sessionExercises || !setResults) return null;
@@ -180,6 +191,9 @@ export function HistoryPage() {
                   <span className={item.isComplete ? 'history-result-success' : item.isFailed ? 'history-result-failed' : 'history-result-pending'}>
                     {item.isComplete ? '✓ õnnestus' : item.isFailed ? '✕ jäi puudu' : '○ pooleli'}
                   </span>
+                  {session.status === 'completed' && item.results.length > 0 ? (
+                    <button type="button" className="secondary-button" onClick={() => setEditingSessionExerciseId(item.id)}>Muuda seeriaid</button>
+                  ) : null}
                 </li>
               ))}
               {exercises.length === 0 ? <li className="empty-card">Filter ei andnud tulemusi.</li> : null}
@@ -188,6 +202,17 @@ export function HistoryPage() {
         ))}
         {items.length === 0 ? <section className="empty-card empty-state" aria-labelledby="history-empty-title"><h3 id="history-empty-title">Ajalugu veel puudub.</h3><p>Lõpetatud treeningud ilmuvad siia automaatselt.</p></section> : null}
       </div>
+      {editingSessionExercise && editingResults.length > 0 ? (
+        <HistorySetEditor
+          sessionExercise={editingSessionExercise}
+          results={editingResults}
+          onClose={() => setEditingSessionExerciseId(null)}
+          onSave={async (setResultId, changes) => {
+            await correctHistoricalSetResult(setResultId, changes);
+            setEditingSessionExerciseId(null);
+          }}
+        />
+      ) : null}
     </section>
   );
 }

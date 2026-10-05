@@ -304,6 +304,7 @@ describe('HistoryPage', () => {
     expect(details).toHaveTextContent('Pooleli lõpetatud');
     details.setAttribute('open', '');
     expect(await screen.findByTestId(`history-exercise-${sessionExerciseId}`)).not.toHaveClass('history-item-failed');
+    expect(screen.queryByRole('button', { name: 'Muuda seeriaid' })).not.toBeInTheDocument();
   });
 
   it('labels an aborted session without treating its incomplete exercise as a failure', async () => {
@@ -438,5 +439,30 @@ describe('HistoryPage', () => {
     await user.clear(filter);
     await user.type(filter, 'pl');
     await waitFor(() => expect(screen.queryByTestId('exercise-performance-summary')).not.toBeInTheDocument());
+  });
+
+  it('edits a completed historical set through the correction boundary and refreshes its PR summary', async () => {
+    const timestamp = nowIso();
+    await db.exercises.add({ id: 'chest', name: 'Chest Press', machineNumber: '12', notes: '', createdAt: timestamp, updatedAt: timestamp });
+    await db.workoutDays.add({ id: 'day', name: 'Päev', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.dayExercises.add({ id: 'owner', workoutDayId: 'day', exerciseId: 'chest', sortOrder: 0, targetSets: 1, successesRequired: 1, repMode: 'fixed', targetRepsMin: 10, targetRepsMax: 10, currentWeight: 80, weightStep: 2.5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.add({ id: 'session', workoutDayId: 'day', performedAt: timestamp, status: 'completed', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({ id: 'session-exercise', workoutSessionId: 'session', dayExerciseId: 'owner', exerciseId: 'chest', exerciseName: 'Chest Press', machineNumber: '12', targetSets: 1, successesRequired: 1, repMode: 'fixed', targetRepsMin: 10, targetRepsMax: 10, currentWeight: 80, weightStep: 2.5, orderIndex: 0 });
+    await db.setResults.add({ id: 'set', workoutSessionExerciseId: 'session-exercise', setNumber: 1, status: 'success', completedReps: 10, usedWeight: 80 });
+
+    render(<MemoryRouter initialEntries={['/ajalugu?exerciseId=chest']}><HistoryPage /></MemoryRouter>);
+    const user = userEvent.setup();
+    expect(await screen.findByTestId('exercise-performance-summary')).toHaveTextContent('Parim raskus: 80 kg');
+    await user.click(screen.getByRole('button', { name: 'Muuda seeriaid' }));
+    await user.click(screen.getByRole('button', { name: /1\. seeria/i }));
+    await user.clear(screen.getByLabelText('Tegelikud kordused'));
+    await user.type(screen.getByLabelText('Tegelikud kordused'), '11');
+    await user.clear(screen.getByLabelText('Tegelik raskus (kg)'));
+    await user.type(screen.getByLabelText('Tegelik raskus (kg)'), '85');
+    await user.click(screen.getByRole('button', { name: 'Salvesta' }));
+
+    await waitFor(() => expect(db.setResults.get('set')).resolves.toMatchObject({ completedReps: 11, usedWeight: 85 }));
+    await waitFor(() => expect(screen.getByTestId('exercise-performance-summary')).toHaveTextContent('Parim raskus: 85 kg'));
+    expect(await db.sessionExercises.get('session-exercise')).toMatchObject({ targetRepsMin: 10, targetRepsMax: 10, currentWeight: 80 });
   });
 });

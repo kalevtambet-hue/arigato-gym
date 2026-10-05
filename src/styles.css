@@ -197,6 +197,29 @@ button {
   gap: 0.55rem;
 }
 
+.history-set-editor-overlay {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  align-items: end;
+  padding: 0.75rem;
+  background: color-mix(in srgb, #020617 68%, transparent);
+}
+
+.history-set-editor {
+  width: min(100%, 36rem);
+  max-height: calc(100dvh - 1.5rem);
+  overflow-y: auto;
+  margin-inline: auto;
+}
+
+@media (min-width: 641px) {
+  .history-set-editor-overlay {
+    align-items: center;
+  }
+}
+
 .list-card,
 .config-card {
   display: grid;

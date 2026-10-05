@@ -81,4 +81,18 @@ describe('correctHistoricalSetResult', () => {
     const after = deriveExercisePerformance({ exerciseId: 'chest', sessions: await db.sessions.toArray(), sessionExercises: await db.sessionExercises.toArray(), setResults: await db.setResults.toArray() });
     expect(after).toMatchObject({ highestLoad: { value: 80, setResultId: 'second-set' } });
   });
+
+  it('corrects a duration result through live Dexie data and recomputes its duration target', async () => {
+    const timestamp = '2026-01-01T10:00:00.000Z';
+    await db.workoutDays.add({ id: 'day', name: 'Päev', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.dayExercises.add({ id: 'duration-owner', workoutDayId: 'day', exerciseId: 'plank', sortOrder: 0, targetSets: 1, successesRequired: 1, repMode: 'duration-fixed', targetRepsMin: 60, targetRepsMax: 60, currentWeight: 0, weightStep: 5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.add({ id: 'duration-session', workoutDayId: 'day', performedAt: timestamp, status: 'completed', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({ id: 'duration-exercise', workoutSessionId: 'duration-session', dayExerciseId: 'duration-owner', exerciseId: 'plank', exerciseName: 'Plank', machineNumber: '', targetSets: 1, successesRequired: 1, repMode: 'duration-fixed', targetRepsMin: 60, targetRepsMax: 60, currentWeight: 0, weightStep: 5, orderIndex: 0 });
+    await db.setResults.add({ id: 'duration-set', workoutSessionExerciseId: 'duration-exercise', setNumber: 1, status: 'success', completedReps: 60, usedWeight: null });
+
+    await correctHistoricalSetResult('duration-set', { status: 'success', completedReps: 70 });
+
+    expect(await db.setResults.get('duration-set')).toMatchObject({ status: 'success', completedReps: 70, usedWeight: null });
+    expect(await db.dayExercises.get('duration-owner')).toMatchObject({ targetRepsMin: 65, targetRepsMax: 65, currentWeight: 0 });
+  });
 });
