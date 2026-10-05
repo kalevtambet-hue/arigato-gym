@@ -44,6 +44,7 @@ export function ActiveExerciseCard({
   );
   const fixedReps = isFixedMode(exercise.repMode);
   const durationMode = isDurationMode(exercise.repMode);
+  const repetitionRangeMode = exercise.repMode === 'range';
   const resultsBySet = new Map(setResults.map((result) => [result.setNumber, result]));
   const unit = durationMode ? 'min' : 'kordust';
 
@@ -92,35 +93,37 @@ export function ActiveExerciseCard({
           </div>
         ) : null}
 
-        <div className="active-control-group">
-          <span className="active-control-label">{durationMode ? 'Kestus' : 'Kordused'}</span>
-          <div
-            className={`stepper-control${fixedReps ? ' stepper-control-fixed' : ''}`}
-            aria-label={durationMode ? 'Kestuse valik' : 'Korduste valik'}
-          >
-            {!fixedReps ? (
-              <button
-                type="button"
-                className="secondary-button stepper-button"
-                aria-label={durationMode ? 'Vähenda kestust' : 'Vähenda kordusi'}
-                onClick={() => onRepsChange(clampRepValue(selectedReps - repStepper.step, repStepper.minimum, repStepper.maximum))}
-              >
-                −
-              </button>
-            ) : null}
-            <strong>{fixedReps ? repStepper.targetValue : selectedReps}</strong>
-            {!fixedReps ? (
-              <button
-                type="button"
-                className="secondary-button stepper-button"
-                aria-label={durationMode ? 'Suurenda kestust' : 'Suurenda kordusi'}
-                onClick={() => onRepsChange(clampRepValue(selectedReps + repStepper.step, repStepper.minimum, repStepper.maximum))}
-              >
-                +
-              </button>
-            ) : null}
+        {!repetitionRangeMode ? (
+          <div className="active-control-group">
+            <span className="active-control-label">{durationMode ? 'Kestus' : 'Kordused'}</span>
+            <div
+              className={`stepper-control${fixedReps ? ' stepper-control-fixed' : ''}`}
+              aria-label={durationMode ? 'Kestuse valik' : 'Korduste valik'}
+            >
+              {!fixedReps ? (
+                <button
+                  type="button"
+                  className="secondary-button stepper-button"
+                  aria-label={durationMode ? 'Vähenda kestust' : 'Vähenda kordusi'}
+                  onClick={() => onRepsChange(clampRepValue(selectedReps - repStepper.step, repStepper.minimum, repStepper.maximum))}
+                >
+                  −
+                </button>
+              ) : null}
+              <strong>{fixedReps ? repStepper.targetValue : selectedReps}</strong>
+              {!fixedReps ? (
+                <button
+                  type="button"
+                  className="secondary-button stepper-button"
+                  aria-label={durationMode ? 'Suurenda kestust' : 'Suurenda kordusi'}
+                  onClick={() => onRepsChange(clampRepValue(selectedReps + repStepper.step, repStepper.minimum, repStepper.maximum))}
+                >
+                  +
+                </button>
+              ) : null}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
 
       <div className="set-status-list" aria-label="Seeriate seis">

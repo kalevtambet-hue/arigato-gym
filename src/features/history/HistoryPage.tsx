@@ -9,35 +9,17 @@ import { formatResultValue, formatTarget } from '../../domain/targetMode';
 import { HistorySetEditor } from './HistorySetEditor';
 
 function isHistoryExerciseComplete(item: {
-  repMode: 'fixed' | 'range' | 'duration-fixed' | 'duration-range';
   targetSets: number;
-  targetRepsMin: number;
-  targetRepsMax: number;
 }, results: Array<{ status: 'success' | 'failed'; completedReps: number }>) {
   if (results.length !== item.targetSets) {
     return false;
   }
 
-  if (results.some((result) => result.status === 'failed')) {
-    return false;
-  }
-
-  if (item.repMode === 'range' || item.repMode === 'duration-range') {
-    return results.every((result) => result.completedReps >= item.targetRepsMax);
-  }
-
-  return results.every((result) => result.completedReps >= item.targetRepsMin);
+  return results.every((result) => result.status === 'success');
 }
 
-function isHistoryExerciseFailed(
-  sessionStatus: 'active' | 'completed' | 'partial' | 'aborted',
-  isComplete: boolean,
-  results: Array<{ status: 'success' | 'failed'; completedReps: number }>,
-) {
-  if (sessionStatus === 'aborted') {
-    return false;
-  }
-  return !isComplete && (sessionStatus !== 'partial' || results.some((result) => result.status === 'failed'));
+function isHistoryExerciseFailed(results: Array<{ status: 'success' | 'failed'; completedReps: number }>) {
+  return results.some((result) => result.status === 'failed');
 }
 
 export function HistoryPage() {
@@ -96,7 +78,7 @@ export function HistoryPage() {
           return {
             ...item,
             isComplete,
-            isFailed: isHistoryExerciseFailed(session.status, isComplete, rawResults),
+            isFailed: isHistoryExerciseFailed(rawResults),
             results: rawResults,
             reps: rawResults
               .map((value) => formatResultValue(item.repMode, value.completedReps))

@@ -608,6 +608,7 @@ export function WorkoutPage() {
     setNumber: number;
     reps: string;
   } | null>(null);
+  const [failureFormError, setFailureFormError] = useState<string | null>(null);
   const [weightEditTarget, setWeightEditTarget] = useState<{
     sessionExerciseId: string;
     exerciseId: string;
@@ -648,6 +649,10 @@ export function WorkoutPage() {
   const [selectedReps, setSelectedReps] = useState<number | null>(null);
   const swipeStartX = useRef<Record<string, number>>({});
   const weightUpdateQueue = useRef<Promise<void>>(Promise.resolve());
+  const failureRepsInputRef = useRef<HTMLInputElement>(null);
+  const failureTargetKey = failureTarget
+    ? `${failureTarget.sessionExerciseId}:${failureTarget.setNumber}`
+    : null;
 
   useEffect(() => {
     if (!workoutDays?.length) {
@@ -661,6 +666,15 @@ export function WorkoutPage() {
       setSelectedDayId(workoutDays[0].id);
     }
   }, [selectedDayId, workoutDays]);
+
+  useEffect(() => {
+    if (!failureTargetKey) {
+      return;
+    }
+
+    failureRepsInputRef.current?.focus();
+    failureRepsInputRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [failureTargetKey]);
 
   const dayExerciseGroups = useMemo(() => {
     const exerciseMap = new Map((exercises ?? []).map((item) => [item.id, item]));
@@ -944,6 +958,29 @@ export function WorkoutPage() {
         </div>
       </div>
 
+      {completedSummary.length > 0 ? (
+        <div className="panel">
+          <h3>Järgmine siht</h3>
+          <ul className="stack-list">
+            {completedSummary.map((item) => (
+              <li key={item.id} className="list-card">
+                <strong>{item.name}</strong>
+                <span>
+                  {item.decision.nextTarget.targetSets} x{' '}
+                  {formatTarget(
+                    item.decision.nextTarget.repMode,
+                    item.decision.nextTarget.targetRepsMin,
+                    item.decision.nextTarget.targetRepsMax,
+                    item.decision.nextTarget.currentWeight,
+                  )}
+                </span>
+                <p className="progression-copy">{item.decision.explanation}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {!activeSession ? (
         <>
           {workoutDays?.length === 0 ? (
@@ -1011,6 +1048,45 @@ export function WorkoutPage() {
         </>
       ) : null}
 
+      {activeSession && (restTimer?.workoutSessionId === activeSession.id || lastSavedSet) ? (
+        <div className="workout-workspace">
+          <div className="workout-primary-column">
+            {restTimer?.workoutSessionId === activeSession.id ? (
+              <div className="rest-timer-panel">
+                <strong>Puhkus</strong>
+                <span>{formatRestTime(restTimer.remainingSeconds)}</span>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => {
+                    writePersistedRestTimer(null);
+                    setRestTimer(null);
+                  }}
+                >
+                  Jätan vahele
+                </button>
+              </div>
+            ) : null}
+            {lastSavedSet ? (
+              <div className="undo-row">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={async () => {
+                    await undoSetResult(lastSavedSet.id);
+                    setLastSavedSet(null);
+                    writePersistedRestTimer(null);
+                    setRestTimer(null);
+                  }}
+                >
+                  Võta tagasi
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       {activeSession && nextExercise ? (
         <div className="workout-workspace">
           <div className="workout-primary-column">
@@ -1035,41 +1111,7 @@ export function WorkoutPage() {
                 reps: String(targetResult.completedReps),
               });
             }}
-            afterTarget={
-              restTimer?.sessionExerciseId === nextExercise.id ? (
-                <div className="rest-timer-panel">
-                  <strong>Puhkus</strong>
-                  <span>{formatRestTime(restTimer.remainingSeconds)}</span>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => {
-                      writePersistedRestTimer(null);
-                      setRestTimer(null);
-                    }}
-                  >
-                    Jätan vahele
-                  </button>
-                </div>
-              ) : null
-            }
           >
-            {lastSavedSet?.sessionExerciseId === nextExercise.id ? (
-              <div className="undo-row">
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={async () => {
-                    await undoSetResult(lastSavedSet.id);
-                    setLastSavedSet(null);
-                    writePersistedRestTimer(null);
-                    setRestTimer(null);
-                  }}
-                >
-                  Võta tagasi
-                </button>
-              </div>
-            ) : null}
             <div className="utility-button-row">
               <button
                 type="button"
@@ -1365,17 +1407,23 @@ export function WorkoutPage() {
                     ? 'Tegelik kestus (min)'
                     : 'Tegelikud kordused'}
                   <input
+                    ref={failureRepsInputRef}
                     id="completedReps"
                     type="number"
                     inputMode="numeric"
                     value={failureTarget.reps}
-                    onChange={(event) =>
-                      setFailureTarget((current) => (current ? { ...current, reps: event.target.value } : current))
-                    }
+                    onChange={(event) => {
+                      setFailureFormError(null);
+                      setFailureTarget((current) => (current ? { ...current, reps: event.target.value } : current));
+                    }}
                   />
                 </label>
+                {failureFormError ? <p className="form-error" role="alert">{failureFormError}</p> : null}
                 <div className="button-row">
-                  <button type="button" className="secondary-button" onClick={() => setFailureTarget(null)}>
+                  <button type="button" className="secondary-button" onClick={() => {
+                    setFailureTarget(null);
+                    setFailureFormError(null);
+                  }}>
                     Loobu
                   </button>
                   <button
@@ -1387,13 +1435,21 @@ export function WorkoutPage() {
                         return;
                       }
 
+                      const repsText = failureTarget.reps.trim();
+                      const completedReps = Number(repsText);
+                      if (!repsText || !Number.isFinite(completedReps) || completedReps < 0) {
+                        setFailureFormError('Sisesta kehtiv tegelik tulemus.');
+                        return;
+                      }
+
                       await handleSetSave(
                         target,
                         failureTarget.setNumber,
                         'failed',
-                        Number(failureTarget.reps || '0'),
+                        completedReps,
                       );
                       setFailureTarget(null);
+                      setFailureFormError(null);
                     }}
                   >
                     Salvesta seeria
@@ -1541,7 +1597,10 @@ export function WorkoutPage() {
 
       {activeSession && nextExercise ? (
         <SetActionBar
-          onFailed={() => setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' })}
+          onFailed={() => {
+            setFailureFormError(null);
+            setFailureTarget({ sessionExerciseId: nextExercise.id, setNumber: nextSetNumber, reps: '' });
+          }}
           onSuccess={(completedReps) =>
             void handleSetSave(
               nextExercise,
@@ -1633,29 +1692,6 @@ export function WorkoutPage() {
           >
             Lõpeta poolikuna
           </button>
-        </div>
-      ) : null}
-
-      {completedSummary.length > 0 ? (
-        <div className="panel">
-          <h3>Järgmine siht</h3>
-          <ul className="stack-list">
-            {completedSummary.map((item) => (
-              <li key={item.id} className="list-card">
-                <strong>{item.name}</strong>
-                <span>
-                  {item.decision.nextTarget.targetSets} x{' '}
-                  {formatTarget(
-                    item.decision.nextTarget.repMode,
-                    item.decision.nextTarget.targetRepsMin,
-                    item.decision.nextTarget.targetRepsMax,
-                    item.decision.nextTarget.currentWeight,
-                  )}
-                </span>
-                <p className="progression-copy">{item.decision.explanation}</p>
-              </li>
-            ))}
-          </ul>
         </div>
       ) : null}
 

@@ -139,8 +139,7 @@ describe('WorkoutPage', () => {
 
     const user = userEvent.setup();
     render(<WorkoutPage />);
-    await user.click(await screen.findByRole('button', { name: 'Vähenda kordusi' }));
-    await user.click(screen.getByRole('button', { name: '11' }));
+    await user.click(await screen.findByRole('button', { name: '11' }));
 
     await waitFor(async () => {
       const result = await db.setResults.where('workoutSessionExerciseId').equals(sessionExerciseId).first();
@@ -168,7 +167,7 @@ describe('WorkoutPage', () => {
     expect(await screen.findByRole('heading', { name: 'Leg Press' })).toBeInTheDocument();
   });
 
-  it('keeps selected repetitions when the active exercise weight changes', async () => {
+  it('saves the chosen one-tap range repetitions after the active exercise weight changes', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');
     const sessionId = createId('session');
@@ -182,8 +181,7 @@ describe('WorkoutPage', () => {
 
     const user = userEvent.setup();
     render(<WorkoutPage />);
-    await user.click(await screen.findByRole('button', { name: 'Vähenda kordusi' }));
-    await user.click(screen.getByRole('button', { name: 'Suurenda raskust' }));
+    await user.click(await screen.findByRole('button', { name: 'Suurenda raskust' }));
     await waitFor(() => expect(screen.getByText('55 kg')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: '11' }));
 
@@ -500,15 +498,29 @@ describe('WorkoutPage', () => {
       orderIndex: 0,
     });
 
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLInputElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
     render(<WorkoutPage />);
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole('button', { name: 'Ei tulnud täis' }));
 
     const workoutCard = screen.getByTestId('active-workout-card');
-    expect(screen.getByLabelText('Tegelikud kordused')).toBeInTheDocument();
-    expect(workoutCard).toContainElement(screen.getByLabelText('Tegelikud kordused'));
+    const repsInput = screen.getByLabelText('Tegelikud kordused');
+    expect(repsInput).toBeInTheDocument();
+    expect(workoutCard).toContainElement(repsInput);
+    expect(repsInput).toHaveFocus();
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
     expect(screen.queryByText('Ebaõnnestunud seeria')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Salvesta seeria' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Sisesta kehtiv tegelik tulemus.');
+    expect(await db.setResults.count()).toBe(0);
   });
 
   it('does not override successful and failed set-dot colors with the pending color', () => {
@@ -653,6 +665,55 @@ describe('WorkoutPage', () => {
     expect(screen.getByTestId('set-dot-1')).toHaveClass('set-dot-pending');
   });
 
+  it('keeps the latest final set undoable after advancing to the next exercise', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const firstSessionExerciseId = createId('session-exercise');
+    const secondSessionExerciseId = createId('session-exercise');
+    await db.workoutDays.add({ id: dayId, name: 'Päev', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.add({ id: sessionId, workoutDayId: dayId, performedAt: timestamp, status: 'active', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.bulkAdd([
+      { id: firstSessionExerciseId, workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseName: 'Chest Press', machineNumber: '12', targetSets: 1, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, orderIndex: 0 },
+      { id: secondSessionExerciseId, workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseName: 'Leg Press', machineNumber: '17', targetSets: 1, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 100, weightStep: 5, orderIndex: 1 },
+    ]);
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: '15' }));
+
+    expect(await screen.findByRole('heading', { name: 'Leg Press' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Võta tagasi' }));
+
+    await waitFor(async () => {
+      expect(await db.setResults.where('workoutSessionExerciseId').equals(firstSessionExerciseId).count()).toBe(0);
+    });
+    expect(await screen.findByRole('heading', { name: 'Chest Press' })).toBeInTheDocument();
+    expect(screen.getByTestId('set-dot-1')).toHaveClass('set-dot-pending');
+  });
+
+  it('keeps the latest final set undoable when it completes the workout', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+    await db.workoutDays.add({ id: dayId, name: 'Päev', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.add({ id: sessionId, workoutDayId: dayId, performedAt: timestamp, status: 'active', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({ id: sessionExerciseId, workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseName: 'Chest Press', machineNumber: '12', targetSets: 1, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, orderIndex: 0 });
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: '15' }));
+
+    expect(await screen.findByRole('heading', { name: 'Treening valmis' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Võta tagasi' }));
+
+    await waitFor(async () => {
+      expect(await db.setResults.where('workoutSessionExerciseId').equals(sessionExerciseId).count()).toBe(0);
+    });
+    expect(await screen.findByRole('heading', { name: 'Chest Press' })).toBeInTheDocument();
+  });
+
   it('starts a rest timer after saving a set and allows skipping it', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');
@@ -734,6 +795,40 @@ describe('WorkoutPage', () => {
     await waitFor(() => {
       expect(screen.queryByText('Puhkus')).not.toBeInTheDocument();
     });
+  });
+
+  it('keeps the persisted rest timer visible and skippable after advancing exercises', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const firstDayExerciseId = createId('day-exercise');
+    const secondDayExerciseId = createId('day-exercise');
+    const firstSessionExerciseId = createId('session-exercise');
+    const secondSessionExerciseId = createId('session-exercise');
+    await db.workoutDays.add({ id: dayId, name: 'Päev', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.dayExercises.bulkAdd([
+      { id: firstDayExerciseId, workoutDayId: dayId, exerciseId: createId('exercise'), sortOrder: 0, targetSets: 1, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp },
+      { id: secondDayExerciseId, workoutDayId: dayId, exerciseId: createId('exercise'), sortOrder: 1, targetSets: 1, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 100, weightStep: 5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp },
+    ]);
+    await db.sessions.add({ id: sessionId, workoutDayId: dayId, performedAt: timestamp, status: 'active', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.bulkAdd([
+      { id: firstSessionExerciseId, workoutSessionId: sessionId, dayExerciseId: firstDayExerciseId, exerciseName: 'Chest Press', machineNumber: '12', targetSets: 1, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, orderIndex: 0 },
+      { id: secondSessionExerciseId, workoutSessionId: sessionId, dayExerciseId: secondDayExerciseId, exerciseName: 'Leg Press', machineNumber: '17', targetSets: 1, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 100, weightStep: 5, orderIndex: 1 },
+    ]);
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: '15' }));
+
+    expect(await screen.findByRole('heading', { name: 'Leg Press' })).toBeInTheDocument();
+    expect(screen.getByText('Puhkus')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Jätan vahele' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Jätan vahele' }));
+    await waitFor(() => {
+      expect(screen.queryByText('Puhkus')).not.toBeInTheDocument();
+    });
+    expect(window.localStorage.getItem('treeninguabiline-rest-timer')).toBeNull();
   });
 
   it('restores the same next exercise and an elapsed-time-adjusted rest timer after remounting', async () => {
@@ -1652,9 +1747,12 @@ describe('WorkoutPage', () => {
     await user.click(await screen.findByRole('button', { name: '15' }));
     await user.click(await screen.findByRole('button', { name: 'Lõpeta treening' }));
 
-    expect(await screen.findByText('Järgmine siht')).toBeInTheDocument();
+    const nextTargetHeading = await screen.findByText('Järgmine siht');
+    expect(nextTargetHeading).toBeInTheDocument();
     expect(screen.getByText('3 x 10-15 x 60 kg')).toBeInTheDocument();
     expect(screen.getByText(/Õnnestumine on kirjas, kuid enne tõusu on vaja veel järjestikust õnnestumist/)).toBeInTheDocument();
+    const startWorkout = await screen.findByRole('button', { name: 'Alusta treeningut' });
+    expect(nextTargetHeading.compareDocumentPosition(startWorkout) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
 
     await waitFor(async () => {
       expect((await db.dayExercises.get(dayExerciseId))?.currentWeight).toBe(60);
@@ -2282,8 +2380,9 @@ describe('WorkoutPage', () => {
     await user.click(await screen.findByRole('button', { name: '15' }));
     await user.click(await screen.findByRole('button', { name: 'Lõpeta treening' }));
 
-    expect(await screen.findByText('Järgmine siht')).toBeInTheDocument();
-    expect(screen.getByText('3 x 10-15 x 80 kg')).toBeInTheDocument();
+    const nextTargetHeading = await screen.findByText('Järgmine siht');
+    const nextTargetPanel = nextTargetHeading.closest('.panel') as HTMLElement;
+    expect(within(nextTargetPanel).getByText('3 x 10-15 x 80 kg')).toBeInTheDocument();
     await waitFor(async () => {
       expect((await db.dayExercises.get(dayExerciseId))?.currentWeight).toBe(80);
     });

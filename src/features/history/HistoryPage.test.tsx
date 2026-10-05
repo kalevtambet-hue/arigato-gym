@@ -37,7 +37,7 @@ describe('HistoryPage', () => {
     cleanup();
   });
 
-  it('shows history sessions as collapsed date groups', async () => {
+  it('shows recorded range successes as successful even below the progression maximum', async () => {
     const timestamp = nowIso();
     const sessionId = createId('session');
     const sessionExerciseId = createId('session-exercise');
@@ -73,7 +73,7 @@ describe('HistoryPage', () => {
         workoutSessionExerciseId: sessionExerciseId,
         setNumber: 1,
         status: 'success',
-        completedReps: 15,
+        completedReps: 10,
         usedWeight: 60,
       },
       {
@@ -81,7 +81,7 @@ describe('HistoryPage', () => {
         workoutSessionExerciseId: sessionExerciseId,
         setNumber: 2,
         status: 'success',
-        completedReps: 15,
+        completedReps: 10,
         usedWeight: 60,
       },
       {
@@ -89,7 +89,7 @@ describe('HistoryPage', () => {
         workoutSessionExerciseId: sessionExerciseId,
         setNumber: 3,
         status: 'success',
-        completedReps: 15,
+        completedReps: 10,
         usedWeight: 60,
       },
     ]);
@@ -158,6 +158,52 @@ describe('HistoryPage', () => {
 
     const exerciseRow = await screen.findByTestId(`history-exercise-${sessionExerciseId}`);
     expect(exerciseRow).toHaveClass('history-item-failed');
+  });
+
+  it('keeps incomplete completed history pending when no recorded set failed', async () => {
+    const timestamp = nowIso();
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+
+    await db.sessions.add({
+      id: sessionId,
+      workoutDayId: createId('day'),
+      performedAt: timestamp,
+      status: 'completed',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await db.sessionExercises.add({
+      id: sessionExerciseId,
+      workoutSessionId: sessionId,
+      dayExerciseId: createId('day-exercise'),
+      exerciseName: 'Chest Press',
+      machineNumber: '12',
+      targetSets: 3,
+      successesRequired: 1,
+      repMode: 'range',
+      targetRepsMin: 10,
+      targetRepsMax: 15,
+      currentWeight: 60,
+      weightStep: 5,
+      orderIndex: 0,
+    });
+    await db.setResults.add({
+      id: `${sessionExerciseId}-1`,
+      workoutSessionExerciseId: sessionExerciseId,
+      setNumber: 1,
+      status: 'success',
+      completedReps: 10,
+      usedWeight: 60,
+    });
+
+    render(<MemoryRouter><HistoryPage /></MemoryRouter>);
+
+    const details = await screen.findByTestId(`history-session-${sessionId}`);
+    details.setAttribute('open', '');
+    const exerciseRow = await screen.findByTestId(`history-exercise-${sessionExerciseId}`);
+    expect(exerciseRow).not.toHaveClass('history-item-failed');
+    expect(exerciseRow).toHaveTextContent('○ pooleli');
   });
 
   it('shows exercises in the performed order based on session orderIndex', async () => {

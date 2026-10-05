@@ -23,7 +23,7 @@ const rangeExercise: WorkoutSessionExerciseRecord = {
 describe('ActiveExerciseCard', () => {
   afterEach(cleanup);
 
-  it('steps weight and range repetitions within their boundaries', async () => {
+  it('keeps weight controls while range repetitions use the action bar', async () => {
     const user = userEvent.setup();
     const onWeightChange = vi.fn();
     const onRepsChange = vi.fn();
@@ -48,12 +48,12 @@ describe('ActiveExerciseCard', () => {
       ),
     ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Suurenda raskust' }));
-    await user.click(screen.getByRole('button', { name: 'Vähenda kordusi' }));
-    await user.click(screen.getByRole('button', { name: 'Suurenda kordusi' }));
 
     expect(onWeightChange).toHaveBeenCalledWith(55);
-    expect(onRepsChange).toHaveBeenNthCalledWith(1, 8);
-    expect(onRepsChange).toHaveBeenNthCalledWith(2, 9);
+    expect(screen.queryByLabelText('Korduste valik')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Vähenda kordusi' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Suurenda kordusi' })).not.toBeInTheDocument();
+    expect(onRepsChange).not.toHaveBeenCalled();
   });
 
   it('groups the active workout essentials into a compact training header', () => {
