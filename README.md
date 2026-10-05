@@ -1,258 +1,340 @@
 # Treeninguabiline
 
-Treeninguabiline on mobiilisõbralik offline-first PWA jõusaali treeningute logimiseks. Rakendus on mõeldud kiireks kasutamiseks telefoni ekraanil: valid päeva, alustad trenni, märgid seeriad ja rakendus arvutab järgmise sihi.
+Treeninguabiline on telefonis kasutamiseks mõeldud jõusaalipäevik. Valid päeva, alustad trenni, märgid iga seeria ühe puudutusega ja rakendus arvutab järgmise korra sihi.
 
-## Kõige tähtsam: privaatsus ja andmed
+Rakendus töötab brauseris ja selle saab paigaldada telefoni avakuvale. Pärast esimest avamist töötab see ka ilma internetita.
+
+## Privaatsus ja andmed
 
 Treeninguabiline ei kogu, ei analüüsi ega saada sinu treeningandmeid kuhugi serverisse.
 
-- Kõik andmed salvestatakse ainult sinu enda seadme brauseri kohalikku andmebaasi `IndexedDB`.
-- Rakendusel ei ole kasutajakontosid.
-- Rakendusel ei ole pilvesünkroonimist.
-- Rakendusel ei ole analüütikat ega jälgimisskripte.
-- Andmed liiguvad seadmest välja ainult siis, kui sina ise kasutad `Ekspordi CSV` või `Ekspordi varundus` funktsiooni.
+- Kõik andmed salvestatakse ainult selle seadme brauseri kohalikku andmebaasi.
+- Kasutajakontosid ei ole.
+- Pilvesünkroonimist ei ole: teise telefoni või brauserisse andmed ise üle ei liigu.
+- Analüütikat ega jälgimisskripte ei ole.
+- Andmed liiguvad seadmest välja ainult siis, kui sa ise kasutad `Ekspordi varundus` või `Ekspordi CSV` nuppu.
 
-See tähendab ka seda, et kasutaja vastutab ise oma andmete varundamise eest. Kui telefoni brauseri andmed kustutatakse, võib lokaalne treeningajalugu kaduda.
+Varundamine on sinu enda vastutus. Kui brauseri andmed kustutatakse, kaob ka treeningajalugu. Vaata jaotist [Varundus ja taastamine](#varundus-ja-taastamine).
 
-## Mida rakendus oskab
+## Kiirstart
 
-- baasharjutuste haldus koos masina numbri ja märkustega
-- treeningpäevade loomine ja ümbernimetamine
-- sama harjutuse lisamine päeva sisse mitu korda
-- kordustel või kestusel põhinevad sihid
-- seeriate kaupa logimine
-- poole harjutuse pealt raskuse muutmine
-- järgmise treeningu sihi automaatne arvutamine
-- järjestikuste õnnestumiste põhine progressioon
-- ajalugu kuupäeva ja harjutuse kaupa
-- CSV import ja eksport
-- täielik JSON varundus ja taastamine
-- installitav PWA Androidis ja iPhone’is
+1. Ava leht `Harjutused` ja vajuta `Lisa harjutus`. Lisa kõik harjutused, mida teed.
+2. Ava leht `Kavad`. Seal on juba päevad `Päev 1` ja `Päev 2`; ava üks neist või loo uus nupuga `Lisa treeningpäev`.
+3. Vali päeva lehel `Vali harjutus` ja vajuta `Lisa harjutus`. Vajuta harjutuse juures `Ava` ja sea siht (seeriad, kordused või kestus, raskus).
+4. Ava leht `Treening`, vali päev ja vajuta `Alusta treeningut`.
+5. Märgi iga seeria alumisel ribal. Kui kõik seeriad on kirjas, vajuta `Lõpeta treening`.
 
-## Tehniline ülevaade
+Põhinavigatsioon on ekraani allservas: `Treening`, `Kavad`, `Harjutused`, `Ajalugu` ja `Veel`. Seaded leiad lehelt `Veel` → `Seaded`.
 
-- Vite
-- React
-- TypeScript
-- Dexie
-- IndexedDB
-- vite-plugin-pwa
+## Paigaldamine telefoni
 
-## Arenduses käivitamine
+### Android ja Chrome
 
-### Eeldused
-
-- Node.js 20+ või uuem
-- npm
-
-### Käivitamine kohalikult
-
-```bash
-npm install
-npm run dev
-```
-
-Vite näitab seejärel lokaalse aadressi, tavaliselt:
-
-```text
-http://localhost:5173
-```
-
-## Kontroll enne deployd
-
-```bash
-npm run lint
-npm run test
-npm run build
-```
-
-## GitHubi ülespanek
-
-Kui projekt ei ole veel GitHubiga seotud:
-
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/<sinu-kasutaja>/arigato-gym.git
-git push -u origin main
-```
-
-Kui repo on juba olemas:
-
-```bash
-git add .
-git commit -m "Uuendus"
-git push origin main
-```
-
-## Cloudflare Pages deploy
-
-### Soovitatud seaded
-
-- Framework preset: `Vite`
-- Build command: `npm run build`
-- Build output directory: `dist`
-
-### Üldine töövoog
-
-1. Ava Cloudflare Pages.
-2. Loo uus projekt GitHub repost.
-3. Vali repo `arigato-gym`.
-4. Sisesta ülaltoodud buildi seaded.
-5. Salvesta ja lase esimene deploy lõpuni.
-6. Ava saadud HTTPS aadress telefonis.
-
-Kui automaatne deploy on sisse lülitatud, läheb iga `main` harusse tehtud push uuesti buildi.
-
-## Telefoni paigaldamine
-
-### Android + Chrome
-
-1. Ava rakenduse Cloudflare Pages URL.
+1. Ava rakenduse aadress Chrome'is.
 2. Oota, kuni leht on täielikult laetud.
-3. Ava Chrome menüü.
-4. Vali `Install app` või `Add to Home Screen`.
-5. Kinnita paigaldus.
+3. Ava Chrome'i menüü ja vali `Install app` või `Add to Home Screen`.
+4. Kinnita paigaldus.
 
-Pärast seda avaneb rakendus nagu eraldi äpp.
+### iPhone ja Safari
 
-### iPhone + Safari
-
-1. Ava rakenduse URL Safaris.
+1. Ava rakenduse aadress Safaris.
 2. Vajuta `Share`.
-3. Vali `Add to Home Screen`.
-4. Kinnita nimi ja lisa avakuvale.
+3. Vali `Add to Home Screen` ja kinnita.
 
-iPhone’is peab see samm olema tehtud Safari kaudu, mitte kõigi teiste brauserite kaudu.
+iPhone'is tee see Safari kaudu.
 
-## Kuidas kontrollida, kas telefonis on uus versioon
+Paigaldatud rakendus avaneb täisekraanil ja püstpaigutuses, kui seade seda toetab.
 
-Rakenduses ava:
+## Harjutused ja kavad
 
-```text
-Seaded -> PWA
-```
+### Harjutuste register
 
-Seal kuvatakse kujul:
+Lehel `Harjutused` on kõik sinu harjutused.
 
-```text
-Versioon 0.1.0 (b08d7d7)
-```
+- `Lisa harjutus` avab vormi. Kohustuslik on ainult `Harjutuse nimi`. Lisaks saad sisestada `Masina number` ja `Märkus`.
+- `Otsi harjutust` filtreerib nimekirja nime järgi.
+- Iga harjutuse juures on viimase treeningu tulemus (`Viimane: …`) ja järgmine siht (`Järgmine siht: …`). Kui harjutus on mitmes treeningpäevas, näidatakse viimati muudetud päeva sihti.
 
-- esimene osa on inimloetav versioon
-- sulgudes on konkreetne build või commit
+Harjutusele vajutades avaneb harjutuse leht:
 
-Kui telefonis kuvatav build ei ühti viimase deployga, siis vana service worker või cache ei ole veel uuenenud.
+- `Muuda harjutust` muudab nime, masina numbrit ja märkust.
+- `Vaata ajalugu` avab selle harjutuse ajaloo koos rekorditega.
+- `Kustuta harjutus` küsib kinnitust ja eemaldab harjutuse ka kõigist treeningpäevadest. Varasemad treeningud jäävad ajalukku alles.
 
-## Esmakordne kasutus
+### Treeningpäevad
 
-Kui avad rakenduse esimest korda, tee asjad selles järjekorras:
+Lehel `Kavad` on sinu treeningpäevad. `Lisa treeningpäev` küsib päeva nime. Märkeruut `Ringtreening` määrab, et treeningu ajal liigutakse pärast iga seeriat järgmise harjutuse juurde (vt [Ringtreening](#ringtreening)). Ringtreeningu valiku saad teha ainult päeva loomisel.
 
-1. Mine lehele `Kavad`.
-2. Lisa vajalikud baasharjutused.
-3. Lisa treeningpäevad, näiteks `Päev 1` ja `Päev 2`.
-4. Seo harjutused päevadega.
-5. Määra igale päeva harjutusele:
-   - seeriate arv
-   - sihi tüüp
-   - kordused või kestus
-   - raskus või kestuse samm
-   - mitu õnnestumist on vaja enne tõusu
-6. Mine lehele `Treening`.
-7. Vali päev ja alusta trenni.
+Päevale vajutades avaneb päeva leht:
 
-## Igapäevane kasutamine
+- `Päeva nimi` ja `Päeva märkus` salvestuvad nupuga `Salvesta nimi`. Märkust näidatakse lehel `Treening` päeva valimisel.
+- `Vali harjutus` + `Lisa harjutus` lisab harjutuse päeva lõppu. Sama harjutuse võib päeva lisada mitu korda.
+- `Üles` ja `Alla` muudavad järjekorda.
+- `Ava` näitab harjutuse sihti. Väljad salvestuvad kohe, eraldi salvestusnuppu pole.
+- `Eemalda` eemaldab harjutuse sellelt päevalt.
+- `Duplikeeri päev` loob koopia nimega `<päev> koopia` koos harjutuste ja sihtidega.
+- `Arhiveeri päev` peidab päeva lehtedelt `Kavad` ja `Treening`. Taastada saad selle lehel `Seaded` → `Arhiiv` → `Taasta`.
+- `Kustuta päev` kustutab päeva ja selle harjutuste sihid. Varasemad treeningud jäävad ajalukku alles.
 
-### 1. Päeva valimine
+### Harjutuse siht päevas
 
-Lehel `Treening` vali see päev, mida täna teed.
+Uus harjutus lisatakse päeva sihiga `3 x 10-15 x 40 kg`, raskuse sammuga 5 kg. Muuda need kohe enda järgi.
 
-### 2. Treeningu alustamine
+| Väli | Tähendus |
+| --- | --- |
+| `Seeriate arv` | Mitu seeriat teed. |
+| `Õnnestumisi enne tõusu` | Mitu järjestikust õnnestunud treeningut on vaja, enne kui siht tõuseb. |
+| `Sihi tüüp` | `Kordused vahemik`, `Kordused fikseeritud`, `Kestus vahemik` või `Kestus fikseeritud`. |
+| `Min kordused` / `Max kordused` | Korduste vahemik, näiteks 10–15. |
+| `Kordused` | Kindel korduste arv. |
+| `Raskus (kg)` | Järgmise treeningu raskus. |
+| `Raskuse samm (kg)` | Kui palju raskus tõuseb ja kui palju muutub raskus treeningu ajal `−`/`+` nupuga. |
+| `Kestus (min)`, `Min kestus (min)`, `Max kestus (min)` | Kestusel põhineva harjutuse siht minutites. |
+| `Kestuse samm (min)` | Kui palju kestussiht tõuseb. |
 
-Vajuta `Alusta treeningut`.
+Iga päeva harjutus areneb eraldi. Kui sama harjutus on kahes päevas, on neil oma sihid ja oma progressioon.
 
-Rakendus loob aktiivse treeningsessiooni selle päeva harjutuste põhjal.
+Puhkeaega päeva lehel muuta ei saa. Uus harjutus saab puhkeaja seadest `Vaikimisi puhkeaeg (sek)`. Hiljem saad seda muuta treeningu ajal nupuga `Muuda sihti`.
 
-### 3. Seeriate märkimine
+## Treeningu alustamine
 
-Iga harjutuse juures saad:
+1. Ava leht `Treening`.
+2. Vali ülevalt päev. All näed selle päeva harjutusi ja sihte. Silt näitab sihi tüüpi: `Vahemik`, `Kindel`, `Kestuse vahemik` või `Kindel kestus`.
+3. Vajuta `Alusta treeningut`.
 
-- vajutada `Tehtud`, kui seeria sai sihi järgi tehtud
-- vajutada `Ei tulnud täis`, kui seeria jäi pooleli
+Treeningu ajal on navigatsiooniribal `Treening` juures roheline täpp. Võid vahepeal teistele lehtedele minna või rakenduse sulgeda: pooleli treening jääb alles ja jätkub samast kohast.
 
-Ebaõnnestunud seeria puhul küsib rakendus tegelikku korduste arvu või kestust.
+Kui brauser seda toetab, ei lähe ekraan treeningu ajal lukku, kuni `Treening` leht on lahti.
 
-### 4. Järjekorra muutmine
+## Seeriate logimine
 
-Kui järgmine trenažöör on kinni, saad vajutada tulevaste harjutuste juures `Tee järgmisena`.
+Aktiivse harjutuse kaardil on harjutuse nimi, masina number, siht (näiteks `3 x 10-15 x 40 kg`) ja `Seeria 2 / 3`. All on iga seeria rida: `✓ tehtud`, `✕ puudu`, `sinu kord` või `ootel`.
 
-### 5. Raskuse muutmine trenni ajal
+Seeria tulemuse märgid ekraani alumisel ribal.
 
-Kui valitud raskus tundub liiga kerge või liiga raske:
+### Korduste vahemik
 
-1. ava aktiivse harjutuse juures `Muuda raskust`
-2. sisesta uus raskus
-3. salvesta
+Ribal on nupp iga korduste arvu kohta, näiteks `10 11 12 13 14 15`. Vajuta tehtud korduste arvu: seeria salvestub selle arvuga kohe, ühe puudutusega. Eraldi korduste valijat ega `Tehtud` nuppu vahemiku puhul pole.
 
-Uus raskus kehtib kohe järgmistest tegemata seeriatest. Sama lõpp-raskus läheb aluseks ka järgmise korra sihile.
+Iga vahemiku nupp märgib seeria õnnestunuks. Sihi tõusuks peavad aga kõik seeriad jõudma vahemiku ülemise piirini (vt [Järgmine siht ja progressioon](#järgmine-siht-ja-progressioon)).
 
-### 6. Treeningu katkestamine
+### Kindel korduste arv
 
-Kui valisid vale päeva või tahad treeningu pooleli jätta, kasuta `Katkesta treening`.
+Kaardil on korduste arv ilma muutmisnuputa. Vajuta `Tehtud`, kui tegid kõik kordused.
 
-See eemaldab aktiivse poolelioleva sessiooni.
+### Kestus
 
-### 7. Treeningu lõpetamine
+- Kindla kestuse puhul vajuta `Tehtud`.
+- Kestuse vahemiku puhul vali `−`/`+` nupuga minutid (vahemiku piires, vaikimisi ülemine piir) ja vajuta `Tehtud`.
 
-Kui kõik päeva harjutused on märgitud:
+Kestusel põhineval harjutusel raskust pole.
 
-1. vajuta `Lõpeta treening`
-2. rakendus arvutab järgmise sihi
-3. see salvestatakse päeva harjutuse uueks baasiks
+### Ei tulnud täis
 
-## Progressiooni loogika
+1. Vajuta `Ei tulnud täis`.
+2. Kaardil avaneb väli `Tegelikud kordused` (kestuse puhul `Tegelik kestus (min)`). Kursor on juba väljas.
+3. Sisesta tegelik tulemus ja vajuta `Salvesta seeria`. `Loobu` sulgeb vormi ilma salvestamata.
 
-Rakendus kasutab vaikimisi topeltprogressiooni.
+Tühja või negatiivset väärtust ei salvestata. Siis näed teadet `Sisesta kehtiv tegelik tulemus.`
 
-Näide:
+### Raskuse muutmine treeningu ajal
 
-- siht: `3 x 10-15 x 50 kg`
-- kui kõik seeriad jõuavad sihi ülemisse otsa, näiteks `15`, loetakse harjutus edukaks
-- kui vajalik arv järjestikuseid edukaid kordi on täis, tõstab rakendus raskust
+Raskuse `−`/`+` nupp muudab raskust päeva harjutuse `Raskuse samm` võrra.
 
-Näide:
+- Uus raskus kehtib kohe järgmistest seeriatest. Juba salvestatud seeriad jäävad oma raskusega.
+- Uus raskus salvestub kohe ka päeva sihiks, isegi kui treening hiljem katkestatakse.
+- Kui ühe harjutuse seeriad tehti eri raskustega, ei tõsta rakendus selle treeningu põhjal raskust. Järgmine siht kasutab viimati valitud raskust.
 
-- `Õnnestumisi enne tõusu = 2`
-- 1. edukas trenn sama sihiga: raskus veel ei tõuse
-- 2. edukas trenn sama sihiga: raskus tõuseb sammuga edasi
+### Salvestatud seeria parandamine treeningu ajal
 
-Kui siht ei täitu, jääb järgmine siht samaks, välja arvatud kasutaja enda käsitsi tehtud raskusemuutus aktiivse treeningu ajal, mis jääb uueks baasiks.
+Jooksva harjutuse salvestatud seeria real vajutades avaneb `Muuda seeriat N`:
 
-## Ajalugu
+- vali `Tehtud` või `Ei tulnud täis`;
+- `Ei tulnud täis` puhul sisesta tegelik tulemus;
+- vajuta `Salvesta muudatus`.
 
-Lehel `Ajalugu` näed varasemaid trenne kuupäeva ja harjutuse kaupa.
+Pane tähele:
 
-Rakendus salvestab ka selle, mis raskusega konkreetne seeria tegelikult tehti. See on kasulik eriti siis, kui muudad raskust poole harjutuse pealt.
+- `Tehtud` salvestab alati sihi väärtuse. Vahemiku puhul on see ülemine piir.
+- `Ei tulnud täis` puhul ei salvestata tühja ega negatiivset väärtust. Siis näed teadet `Sisesta kehtiv tegelik tulemus.`
+- `Kustuta seeria` küsib kinnitust. Kustutatud seeriat tagasi võtta ei saa.
+
+Eelmiste harjutuste seeriaid saad parandada pärast treeningut lehel `Ajalugu`.
+
+### Muuda sihti
+
+`Muuda sihti` aktiivse harjutuse kaardil muudab käimasoleva harjutuse sihti: seeriate arvu, tüüpi, kordusi või kestust, raskust ja `Puhkeaeg seeriate vahel (sek)`. Vajuta `Salvesta siht`.
+
+Muudatus kehtib kohe ja salvestub ka järgmise korra sihiks. Seeriate arv ei saa olla väiksem kui juba salvestatud seeriate arv. Kui mõni väli on tühi või väärtus vigane, ei salvestata midagi ja vormis on kirjas, mida parandada.
+
+### Märkmed
+
+`Märkmed` näitab selle harjutuse märkmeid ja sihimuutuste ajalugu (kes muutis: `Kasutaja` või `Automaatika`). `Lisa märkus` + `Salvesta märkus` lisab uue märkme.
+
+### Järjekorra muutmine
+
+Plokis `Tulemas` on ülejäänud harjutused. Kui masin on kinni, vajuta harjutuse juures `Tee järgmisena` või tõmba rida vasakule.
+
+Ploki kohal on edenemine kujul `Tehtud 1 / 4` ja `Jäänud 3`. Need arvud näitavad harjutusi, mitte seeriaid.
+
+### Ringtreening
+
+Kui päev on loodud märkega `Ringtreening`, liigub rakendus pärast iga seeriat järgmise harjutuse juurde. Esimesena tuleb harjutus, millel on kõige vähem seeriaid tehtud. Tavalisel päeval tehakse harjutuse kõik seeriad järjest.
+
+## Puhkeaja taimer ja tagasivõtmine
+
+### Puhkeaja taimer
+
+Pärast iga salvestatud seeriat, ka `Ei tulnud täis` järel, käivitub taimer `Puhkus`, näiteks `1:00`.
+
+- Taimer kasutab selle harjutuse puhkeaega. Kui puhkeaeg on 0, taimerit ei käivitata.
+- `Jätan vahele` lõpetab taimeri.
+- Taimer jääb nähtavaks ka siis, kui liigud järgmise harjutuse juurde.
+- Taimer jätkab õige ajaga ka pärast lehe uuesti laadimist või rakenduse uuesti avamist.
+- Uue seeria salvestamine käivitab taimeri uuesti.
+- Kui aeg saab täis, kaob taimer vaatest. Heli ega vibratsiooni pole.
+
+### Võta tagasi
+
+Pärast seeria salvestamist ilmub nupp `Võta tagasi`. See kustutab viimati salvestatud seeria ja lõpetab puhkeaja taimeri.
+
+- Tagasi saab võtta ainult kõige viimase seeria. Järgmine salvestus asendab selle.
+- Nupp jääb alles ka siis, kui viimane seeria viis sind järgmise harjutuse juurde või tõi ette teate `Treening valmis`. Tagasivõtmise järel naased selle seeria juurde.
+- Raskuse ega sihi muudatusi tagasivõtmine ei taasta.
+- Kui lahkud lehelt `Treening` või laadid lehe uuesti, nupp kaob. Seeria saad siis parandada seeria real vajutades või pärast treeningut lehel `Ajalugu`.
+
+## Järgmine siht ja progressioon
+
+Aktiivse harjutuse kaardil on reegel kirjas, näiteks:
+
+> Kui kõik seeriad jõuavad vahemiku ülemise piirini 2 järjestikusel sama sihiga treeningul, suureneb järgmisel sihil raskus 5 kg võrra.
+
+### Millal siht tõuseb
+
+Siht tõuseb, kui kehtivad kõik tingimused:
+
+1. Treening lõpetati nupuga `Lõpeta treening`.
+2. Kõik planeeritud seeriad on märgitud õnnestunuks.
+   - Korduste vahemikus jõudis iga seeria ülemise piirini. Näiteks sihi `10-15` puhul on vaja igas seerias 15 kordust.
+   - Kindla korduste arvu või kestuse puhul tehti iga seeria täis.
+   - Kestuse vahemikus jõudis iga seeria ülemise piirini.
+3. Kõik seeriad tehti sama raskusega.
+4. Selliseid treeninguid on järjest nii palju, kui nõuab `Õnnestumisi enne tõusu`. Järjestikuseks loetakse ainult täpselt sama sihiga treeninguid: sama tüüp, samad kordused või kestus ja sama raskus.
+
+Tõus:
+
+- kordustega harjutusel suureneb raskus `Raskuse samm` võrra, kordused jäävad samaks;
+- kestusel põhineval harjutusel pikenevad mõlemad kestuse piirid `Kestuse samm` võrra.
+
+### Millal siht ei tõuse
+
+- Mõni seeria oli `Ei tulnud täis`.
+- Vahemiku puhul jäi mõni seeria alla ülemise piiri. Ajaloos on seeria ikkagi „õnnestus“, aga tõusuks sellest ei piisa.
+- Järjestikuseid õnnestumisi on veel vähem kui vaja.
+- Ühe harjutuse seeriad tehti eri raskustega.
+- Treening lõpetati poolikuna või katkestati. Siis järgmist sihti ei arvutata.
+
+Kui siht ei tõuse, jääb järgmiseks korraks sama siht. Kui muutsid treeningu ajal raskust, jääb sihiks viimati valitud raskus.
+
+Kui muudad sihi tüüpi, kordusi, kestust või raskust käsitsi (lehel `Kavad`, nupuga `Muuda sihti` või raskuse `−`/`+` nupuga), hakatakse järjestikuseid õnnestumisi uue sihiga otsast lugema.
+
+## Treeningu lõpetamine
+
+### Kõik seeriad tehtud
+
+Kui kõik seeriad on kirjas, ilmub `Treening valmis`. Vajuta `Lõpeta treening`.
+
+Lehe `Treening` ülaossa ilmub plokk `Järgmine siht`. Iga harjutuse juures on:
+
+- järgmine siht, näiteks `3 x 10-15 x 45 kg`;
+- selgitus, näiteks „Kõik planeeritud seeriad täitsid sihi; järgmine siht tõuseb.“ või „Vähemalt üks planeeritud seeria ei täitnud sihti.“
+
+Plokk on nähtav, kuni oled lehel `Treening`. Kui lahkud lehelt või laadid selle uuesti, plokk kaob. Järgmise sihi leiad siis lehelt `Harjutused` või päeva valikust lehel `Treening`.
+
+### Treening jäi poolikuks
+
+Kui mõni planeeritud seeria pole korrektselt kirjas, näed teadet `Treening jäi poolikuks` ja nuppu `Lõpeta poolikuna`. Selline treening läheb ajalukku märkega `Pooleli lõpetatud`. Järgmist sihti ei arvutata.
+
+### Katkesta treening
+
+`Katkesta treening` küsib kinnitust.
+
+- Kui ühtegi seeriat pole salvestatud, kustutatakse treening jäljetult. Sobib, kui valisid vale päeva.
+- Kui seeriaid on salvestatud, jääb treening ajalukku märkega `Katkestatud`. Järgmist sihti ei arvutata.
+
+## Ajalugu ja rekordid
+
+Lehel `Ajalugu` on kõik treeningud, uuemad eespool. Iga treening on kokku volditud: näed kuupäeva, päeva nime ja tulemust, näiteks `2/3 edukat`, `Pooleli lõpetatud` või `Katkestatud`. Vajuta reale, et näha harjutusi.
+
+Iga harjutuse juures on siht, seeriate tulemused (näiteks `15 / 12 / 10`) ja olek:
+
+- `✓ õnnestus`: kõik seeriad märgiti õnnestunuks;
+- `✕ jäi puudu`: vähemalt üks seeria oli `Ei tulnud täis`;
+- `○ pooleli`: kõik seeriad pole kirjas.
+
+### Filtreerimine ja rekordid
+
+`Filtreeri harjutuse järgi` näitab ainult neid harjutusi, mille nimes on sisestatud tekst.
+
+Rekordite kokkuvõte ilmub, kui:
+
+- avad harjutuse lehel nupu `Vaata ajalugu`; või
+- kirjutad filtrisse harjutuse täpse nime (suur- ja väiketäht pole olulised).
+
+Kordustega harjutuse kokkuvõte:
+
+- `Parim raskus: … kg`
+- `Parim … kg juures: … kordust`
+- `Edukaid tööseeriaid: …`
+- `Treeninguid: …`
+
+Kestusel põhineva harjutuse puhul on esimese kahe rea asemel `Pikim kestus: … min`.
+
+Kokkuvõttes arvestatakse ainult õnnestunud seeriaid treeningutest, mis lõpetati nupuga `Lõpeta treening`.
+
+## Lõpetatud seeriate muutmine
+
+Kui treeningu seeria läks valesti kirja, paranda see ajaloos.
+
+1. Ava lehel `Ajalugu` treening.
+2. Vajuta harjutuse juures `Muuda seeriaid`.
+3. Vali seeria, näiteks `2. seeria: 9 · 40 kg · ebaõnnestus`.
+4. Muuda välju `Tulemus` (`Õnnestus` või `Ebaõnnestus`), `Tegelikud kordused` (või `Tegelik kestus (min)`) ja `Tegelik raskus (kg)`.
+5. Vajuta `Salvesta`.
+
+Tegeliku tulemuse väli ei tohi olla tühi ega negatiivne. Raskuse välja võib jätta tühjaks.
+
+Muuta saab ainult treeninguid, mis lõpetati nupuga `Lõpeta treening`. Seeriaid lisada ega kustutada ei saa. Samuti ei saa muuta treeningu kuupäeva, harjutust ega planeeritud sihti.
+
+Pärast salvestamist uuenevad automaatselt:
+
+- ajaloo olekud ja rekordite kokkuvõte;
+- selle päeva harjutuse järgmine siht, mis arvutatakse viimase lõpetatud treeningu põhjal uuesti.
+
+> Hoiatus: kui oled pärast viimast treeningut harjutuse sihti käsitsi muutnud, asendab ajaloo parandus selle sihi uuesti arvutatud sihiga. Kontrolli siht pärast parandust lehel `Kavad` üle.
+
+## Seaded
+
+Lehel `Veel` → `Seaded` on:
+
+- `Välimus`: `Süsteemi järgi`, `Hele` või `Tume`;
+- `Vaikimisi puhkeaeg (sek)`: puhkeaeg, mille saavad edaspidi päevadesse lisatud harjutused (vaikimisi 60). Olemasolevaid harjutusi see ei muuda;
+- `Arhiiv`: arhiveeritud treeningpäevad ja nupp `Taasta`;
+- `Andmed`: varundus, import, eksport ja andmete kustutamine;
+- `PWA`: versioon kujul `Versioon 0.1.2 (bdebace)`;
+- `Abi`: lühike juhend rakenduses.
 
 ## Varundus ja taastamine
 
 ### JSON varundus
 
-`Ekspordi varundus` loob ühe täieliku JSON faili.
+`Ekspordi varundus` laadib alla faili `treeninguabiline-varundus.json`. Selles on harjutused, päevad, sihid, kogu treeningajalugu, märkmed ja muudatuste ajalugu.
 
-Kasuta seda siis, kui tahad:
+`Impordi varundus` asendab kõik selle seadme andmed valitud faili sisuga. Sobib uude telefoni kolimiseks või andmete taastamiseks.
 
-- teha täieliku varukoopia
-- viia kogu andmestiku teise seadmesse
-- taastada äpi seis hiljem täpselt samal kujul
+### CSV eksport ja import
 
-`Impordi varundus` kirjutab olemasolevad lokaalsed andmed üle imporditava failiga.
-
-### CSV eksport
-
-`Ekspordi CSV` teeb mitu eraldi faili:
+`Ekspordi CSV` laadib alla seitse faili:
 
 - `harjutused.csv`
 - `treeningpaevad.csv`
@@ -260,72 +342,91 @@ Kasuta seda siis, kui tahad:
 - `sessioonid.csv`
 - `sessiooni-harjutused.csv`
 - `seeriad.csv`
+- `harjutuse-sundmused.csv`
 
-See sobib siis, kui tahad andmeid arvutis vaadata või muuta.
+`Impordi CSV` tunneb faile ära nime järgi. Valitud failide sisu asendab vastavad andmed. Valimata failide andmed jäävad alles.
 
-### CSV import
+Kui muudad CSV-faile käsitsi, ära muuda failinimesid ega veerunimesid ja hoia numbrid numbritena.
 
-`Impordi CSV` ootab samu failinimesid, mida eksport ise loob.
+### Kõigi andmete kustutamine
 
-Kui muudad CSV-sid käsitsi:
+`Kustuta kõik lokaalsed andmed` küsib kinnitust ja kustutab selle seadme kõik treeningandmed. Seda ei saa tagasi võtta, seega tee enne JSON-varundus.
 
-- ära muuda veerunimesid
-- ära riku failinimesid
-- hoia numbriväljad numbritena
+### Soovitus
 
-## Soovituslik varundamise harjumus
+Tee JSON-varundus vähemalt kord nädalas, enne telefoni vahetust ja enne brauseri andmete puhastamist.
 
-Kui kasutad rakendust päriselt iga nädal, tee vähemalt üks järgmistest:
+## Telefon ja arvuti
 
-- JSON varundus kord nädalas
-- JSON varundus enne telefoni vahetust
-- JSON varundus enne brauseri andmete puhastamist
+- Rakendus on tehtud eelkõige telefonile. Seeria nupud ja navigatsioon on alati ekraani allservas.
+- Laial ekraanil (arvutis) on treeningu vaade kahes veerus: vasakul aktiivne harjutus, paremal edenemine ja `Tulemas`.
+- Telefonis saad `Tulemas` rea vasakule tõmmata. Arvutis kasuta nuppu `Tee järgmisena`.
 
-## Tõrkeotsing
+## Ilma internetita
+
+- Pärast esimest avamist töötab rakendus ka ilma internetita. Andmed on niikuinii seadmes.
+- Uus versioon laaditakse taustal, kui rakendus on internetiga avatud. Versiooni näed lehel `Seaded` → `PWA`.
+
+## Teadaolevad piirangud
+
+- Andmed on ainult ühes seadmes ja brauseris. Teise seadmesse saad need viia ainult JSON-varundusega.
+- Ploki `Järgmine siht` näed ainult kohe pärast treeningu lõpetamist.
+- `Võta tagasi` võtab tagasi ainult viimase seeria ja kaob, kui lahkud lehelt `Treening`.
+- Puhkeaja lõpust ei anta heli ega vibratsiooniga märku.
+- Raskuse `−`/`+` muudatus salvestub päeva sihiks kohe, ka siis, kui treening katkestatakse.
+- Ringtreeningu valikut ja harjutuse puhkeaega päeva lehel muuta ei saa.
+
+## Tõrkeotsing ja küsimused
+
+### Vajutasin vale korduste arvu
+
+Kui see oli viimane salvestatud seeria, vajuta `Võta tagasi`. Muul juhul vajuta jooksva harjutuse seeria real või paranda seeria pärast treeningut lehel `Ajalugu` nupuga `Muuda seeriaid`.
+
+### Miks raskus ei tõusnud, kuigi kõik seeriad olid rohelised?
+
+Vahemiku puhul on tõusuks vaja igas seerias ülemist piiri. Vaata ka `Õnnestumisi enne tõusu` väärtust ja seda, kas muutsid treeningu ajal raskust. Põhjust selgitab plokk `Järgmine siht` treeningu lõpus.
+
+### Valisin vale päeva
+
+Kui ühtegi seeriat pole veel salvestatud, vajuta `Katkesta treening`. Treening kustutatakse jäljetult.
 
 ### Telefonis ei paista uus versioon
 
-Vaata `Seaded` lehelt versiooninumbrit.
+1. Vaata versiooni lehelt `Seaded` → `PWA`.
+2. Sulge rakendus täielikult ja ava see internetiühendusega uuesti.
+3. Oota hetk ja ava uuesti.
+4. Vajadusel eemalda rakendus avakuvalt ja paigalda uuesti. Enne seda tee JSON-varundus.
 
-Kui see on vana:
+### Andmed on kadunud
 
-1. sulge äpp täielikult
-2. ava uuesti URL brauseris
-3. oota mõni hetk, et service worker saaks uuenduse kätte
-4. vajadusel eemalda äpp avakuvalt ja lisa uuesti
-
-### Leht avaneb, aga andmed on kadunud
-
-Kõige tavalisem põhjus on brauseri lokaalse andmebaasi kustutamine.
-
-Taasta andmed:
-
-- `Impordi varundus` abil JSON failist
-- või `Impordi CSV` abil eksporditud CSV-dest
+Kõige sagedasem põhjus on brauseri andmete kustutamine. Taasta andmed lehel `Seaded` nupuga `Impordi varundus` või `Impordi CSV`.
 
 ### iPhone ei paku paigaldust
 
-Kontrolli:
+Kontrolli, et kasutad Safarit, aadress algab `https://` ja valid `Share` → `Add to Home Screen`.
 
-- kas kasutad Safarit
-- kas leht on avatud HTTPS aadressilt
-- kas valid `Share -> Add to Home Screen`
+---
 
-### Androidis on vana cache
+## Arendajale
 
-Kui deploy on uus, aga telefon näitab vana buildi:
+Tehnoloogia: Vite, React, TypeScript, Dexie (IndexedDB) ja vite-plugin-pwa. Vaja on Node.js 20+ ja npm.
 
-- ava äpp brauseris otse URL-ilt
-- tee lehele uus laadimine
-- ava `Seaded` ja kontrolli buildi uuesti
+```bash
+npm install
+npm run dev     # arendusserver, tavaliselt http://localhost:5173
+npm run lint
+npm test
+npm run build   # tulemus kaustas dist/
+```
 
-## Arendaja märkus
+Enne muudatuse pakkumist käivita `npm test`, `npm run lint` ja `npm run build`.
 
-Rakendus on teadlikult hoitud lihtsana:
+### Cloudflare Pages
 
-- ei mingeid kontosid
-- ei mingeid pilveandmebaase
-- ei mingeid sotsiaalseid funktsioone
-- ei mingeid serveripoolseid treeninguprofiile
+- Framework preset: `Vite`
+- Build command: `npm run build`
+- Build output directory: `dist`
 
-Fookus on kiirel kasutusel jõusaalis ja täielikul kontrollil oma andmete üle.
+Kui automaatne deploy on sisse lülitatud, ehitatakse iga `main` harusse tehtud push uuesti.
+
+Rakenduses on teadlikult kasutajakontod, pilveandmebaas ja serveripoolsed profiilid välja jäetud. Eesmärk on kiire kasutus jõusaalis ja täielik kontroll oma andmete üle.
