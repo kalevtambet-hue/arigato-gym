@@ -1737,7 +1737,13 @@ textarea:focus-visible {
 }
 
 .plans-page .modal-card {
+  display: grid;
+  gap: 0.85rem;
   box-shadow: none;
+}
+
+.plans-page .modal-card h3 {
+  margin: 0;
 }
 
 .exercise-form {
