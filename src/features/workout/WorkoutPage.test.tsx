@@ -2177,9 +2177,9 @@ describe('WorkoutPage', () => {
 
     render(<WorkoutPage />);
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
 
     await db.setResults.where('workoutSessionExerciseId').equals(sessionExerciseId).modify({ usedWeight: 45 });
     await user.click(await screen.findByRole('button', { name: 'Lõpeta treening' }));
@@ -2217,9 +2217,9 @@ describe('WorkoutPage', () => {
 
     render(<WorkoutPage />);
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
     const activeResults = await db.setResults.where('workoutSessionExerciseId').equals(sessionExerciseId).sortBy('setNumber');
     await db.setResults.update(activeResults[2].id, { usedWeight: 45 });
     await user.click(await screen.findByRole('button', { name: 'Lõpeta treening' }));
@@ -2275,9 +2275,9 @@ describe('WorkoutPage', () => {
 
     render(<WorkoutPage />);
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
-    await user.click(await screen.findByRole('button', { name: 'Tehtud' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
+    await user.click(await screen.findByRole('button', { name: '15' }));
     await user.click(await screen.findByRole('button', { name: 'Lõpeta treening' }));
 
     expect(await screen.findByText('Järgmine siht')).toBeInTheDocument();
