@@ -858,6 +858,63 @@ describe('WorkoutPage', () => {
     expect(window.localStorage.getItem('treeninguabiline-rest-timer')).toBeNull();
   });
 
+  it('starts the configured exercise-rest timer after completing an exercise', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const firstDayExerciseId = createId('day-exercise');
+    const secondDayExerciseId = createId('day-exercise');
+    const firstSessionExerciseId = createId('session-exercise');
+    const secondSessionExerciseId = createId('session-exercise');
+    window.localStorage.setItem('treeninguabiline-exercise-rest-seconds', '120');
+    window.localStorage.setItem('treeninguabiline-show-exercise-rest-timer', 'true');
+
+    await db.workoutDays.add({ id: dayId, name: 'Päev', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.dayExercises.bulkAdd([
+      { id: firstDayExerciseId, workoutDayId: dayId, exerciseId: createId('exercise'), sortOrder: 0, targetSets: 1, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp },
+      { id: secondDayExerciseId, workoutDayId: dayId, exerciseId: createId('exercise'), sortOrder: 1, targetSets: 1, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 100, weightStep: 5, restSeconds: 90, createdAt: timestamp, updatedAt: timestamp },
+    ]);
+    await db.sessions.add({ id: sessionId, workoutDayId: dayId, performedAt: timestamp, status: 'active', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.bulkAdd([
+      { id: firstSessionExerciseId, workoutSessionId: sessionId, dayExerciseId: firstDayExerciseId, exerciseName: 'Chest Press', machineNumber: '12', targetSets: 1, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 60, weightStep: 5, orderIndex: 0 },
+      { id: secondSessionExerciseId, workoutSessionId: sessionId, dayExerciseId: secondDayExerciseId, exerciseName: 'Leg Press', machineNumber: '17', targetSets: 1, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 100, weightStep: 5, orderIndex: 1 },
+    ]);
+
+    render(<WorkoutPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: '15' }));
+
+    expect(await screen.findByText('Harjutuste vahel')).toBeInTheDocument();
+    expect(screen.getByText('2:00')).toBeInTheDocument();
+  });
+
+  it('does not restore an exercise-rest timer when it is hidden in settings', async () => {
+    const timestamp = nowIso();
+    const dayId = createId('day');
+    const sessionId = createId('session');
+    const sessionExerciseId = createId('session-exercise');
+    window.localStorage.setItem('treeninguabiline-show-exercise-rest-timer', 'false');
+    window.localStorage.setItem('treeninguabiline-rest-timer', JSON.stringify({
+      workoutSessionId: sessionId,
+      sessionExerciseId,
+      endsAt: Date.now() + 120_000,
+      kind: 'exercise',
+    }));
+
+    await db.workoutDays.add({ id: dayId, name: 'Päev', notes: '', sortOrder: 0, isArchived: false, createdAt: timestamp, updatedAt: timestamp });
+    await db.sessions.add({ id: sessionId, workoutDayId: dayId, performedAt: timestamp, status: 'active', createdAt: timestamp, updatedAt: timestamp });
+    await db.sessionExercises.add({
+      id: sessionExerciseId, workoutSessionId: sessionId, dayExerciseId: createId('day-exercise'), exerciseName: 'Leg Press', machineNumber: '17',
+      targetSets: 1, successesRequired: 1, repMode: 'range', targetRepsMin: 10, targetRepsMax: 15, currentWeight: 50, weightStep: 5, orderIndex: 0,
+    });
+
+    render(<WorkoutPage />);
+
+    expect(await screen.findByText('Leg Press')).toBeInTheDocument();
+    expect(screen.queryByText('Harjutuste vahel')).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('treeninguabiline-rest-timer')).toBeNull();
+  });
+
   it('restores the same next exercise and an elapsed-time-adjusted rest timer after remounting', async () => {
     const startedAt = new Date('2026-07-13T10:00:00.000Z').valueOf();
     const now = vi.spyOn(Date, 'now').mockReturnValue(startedAt);
