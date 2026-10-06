@@ -1176,6 +1176,16 @@ textarea {
   min-height: 3rem;
 }
 
+.timer-settings-section input[type='number'] {
+  min-height: 2.5rem;
+  padding-block: 0.45rem;
+}
+
+.timer-settings-section .checkbox-field input[type='checkbox'] {
+  min-height: 1.25rem;
+  margin: 0;
+}
+
 .settings-data-section {
   padding-inline: var(--space-3);
   border-inline: 0.25rem solid var(--warning);

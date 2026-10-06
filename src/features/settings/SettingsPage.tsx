@@ -259,7 +259,7 @@ export function SettingsPage() {
             </select>
           </label>
         </article>
-        <article className="panel settings-card settings-section compact-panel">
+        <article className="panel settings-card settings-section compact-panel timer-settings-section">
           <h3>Treening</h3>
           <label>
             Vaikimisi puhkeaeg (sek)
@@ -313,7 +313,7 @@ export function SettingsPage() {
               }}
             />
           </label>
-          <label>
+          <label className="checkbox-field">
             <input
               type="checkbox"
               checked={showExerciseRestTimer}

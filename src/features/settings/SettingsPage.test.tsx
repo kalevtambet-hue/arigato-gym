@@ -149,6 +149,14 @@ describe('SettingsPage', () => {
     expect(getDefaultRestSeconds()).toBe(60);
   });
 
+  it('marks the timer settings section for compact controls', () => {
+    render(<SettingsPage />);
+
+    expect(screen.getByRole('heading', { name: 'Treening' }).closest('article')).toHaveClass(
+      'timer-settings-section',
+    );
+  });
+
   it('keeps the latest valid rest duration when the same edit becomes fractional', async () => {
     const user = userEvent.setup();
     render(<SettingsPage />);
