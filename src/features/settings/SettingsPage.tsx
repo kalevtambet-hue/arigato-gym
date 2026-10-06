@@ -5,6 +5,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/appDb';
 import { parseCsv, toCsv } from './exportCsv';
 import { getDefaultRestSeconds, setDefaultRestSeconds } from './restDuration';
+import {
+  getExerciseRestSeconds,
+  getShowExerciseRestTimer,
+  setExerciseRestSeconds,
+  setShowExerciseRestTimer,
+} from './exerciseRestTimer';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 
 function parseRepMode(value: unknown) {
@@ -53,6 +59,9 @@ export function SettingsPage() {
   const [themePreference, setThemePreferenceState] = useState(getThemePreference);
   const [defaultRestSeconds, setDefaultRestSecondsState] = useState(getDefaultRestSeconds);
   const [defaultRestDurationDraft, setDefaultRestDurationDraft] = useState(() => String(getDefaultRestSeconds()));
+  const [exerciseRestSeconds, setExerciseRestSecondsState] = useState(getExerciseRestSeconds);
+  const [exerciseRestDraft, setExerciseRestDraft] = useState(() => String(getExerciseRestSeconds()));
+  const [showExerciseRestTimer, setShowExerciseRestTimerState] = useState(getShowExerciseRestTimer);
   const [dataFeedback, setDataFeedback] = useState('');
   const archivedDays = useLiveQuery(
     () => db.workoutDays.orderBy('sortOrder').filter((day) => day.isArchived).toArray(),
@@ -277,6 +286,44 @@ export function SettingsPage() {
                 }
               }}
             />
+          </label>
+          <label>
+            Harjutustevaheline puhkeaeg (sek)
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={exerciseRestDraft}
+              onChange={(event) => {
+                const draft = event.target.value;
+                setExerciseRestDraft(draft);
+                const seconds = parseRestDuration(draft);
+                if (seconds === null) {
+                  return;
+                }
+
+                setExerciseRestSeconds(seconds);
+                setExerciseRestSecondsState(seconds);
+              }}
+              onBlur={() => {
+                if (parseRestDuration(exerciseRestDraft) === null) {
+                  setExerciseRestDraft(String(exerciseRestSeconds));
+                }
+              }}
+            />
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={showExerciseRestTimer}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setShowExerciseRestTimer(checked);
+                setShowExerciseRestTimerState(checked);
+              }}
+            />
+            Näita harjutustevahelist taimerit
           </label>
         </article>
         <article className="panel settings-card settings-section compact-panel">

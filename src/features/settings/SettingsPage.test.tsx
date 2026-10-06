@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db/appDb';
 import { SettingsPage } from './SettingsPage';
+import { getExerciseRestSeconds, getShowExerciseRestTimer } from './exerciseRestTimer';
 import { getDefaultRestSeconds } from './restDuration';
 
 async function clearDatabase() {
@@ -132,6 +133,20 @@ describe('SettingsPage', () => {
     await user.type(restDuration, '90');
     expect(restDuration).toHaveValue(90);
     expect(getDefaultRestSeconds()).toBe(90);
+  });
+
+  it('saves exercise-rest duration and visibility independently from default set rest', async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    const exerciseRest = screen.getByLabelText('Harjutustevaheline puhkeaeg (sek)');
+    await user.clear(exerciseRest);
+    await user.type(exerciseRest, '120');
+    await user.click(screen.getByLabelText('Näita harjutustevahelist taimerit'));
+
+    expect(getExerciseRestSeconds()).toBe(120);
+    expect(getShowExerciseRestTimer()).toBe(false);
+    expect(getDefaultRestSeconds()).toBe(60);
   });
 
   it('keeps the latest valid rest duration when the same edit becomes fractional', async () => {
