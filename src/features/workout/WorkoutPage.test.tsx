@@ -824,7 +824,7 @@ describe('WorkoutPage', () => {
     });
   });
 
-  it('keeps the persisted rest timer visible and skippable after advancing exercises', async () => {
+  it('shows an exercise-rest timer after advancing exercises', async () => {
     const timestamp = nowIso();
     const dayId = createId('day');
     const sessionId = createId('session');
@@ -848,12 +848,12 @@ describe('WorkoutPage', () => {
     await user.click(await screen.findByRole('button', { name: '15' }));
 
     expect(await screen.findByRole('heading', { name: 'Leg Press' })).toBeInTheDocument();
-    expect(screen.getByText('Puhkus')).toBeInTheDocument();
+    expect(screen.getByText('Harjutuste vahel')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Jätan vahele' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Jätan vahele' }));
     await waitFor(() => {
-      expect(screen.queryByText('Puhkus')).not.toBeInTheDocument();
+      expect(screen.queryByText('Harjutuste vahel')).not.toBeInTheDocument();
     });
     expect(window.localStorage.getItem('treeninguabiline-rest-timer')).toBeNull();
   });

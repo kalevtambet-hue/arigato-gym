@@ -1107,7 +1107,7 @@ export function WorkoutPage() {
           <div className="workout-primary-column">
             {restTimer?.workoutSessionId === activeSession.id ? (
               <div className="rest-timer-panel">
-                <strong>Puhkus</strong>
+                <strong>{restTimer.kind === 'exercise' ? 'Harjutuste vahel' : 'Puhkus'}</strong>
                 <span>{formatRestTime(restTimer.remainingSeconds)}</span>
                 <button
                   type="button"
@@ -1167,38 +1167,6 @@ export function WorkoutPage() {
               });
             }}
           >
-            {restTimer?.sessionExerciseId === nextExercise.id ? (
-              <div className="rest-timer-panel">
-                <strong>{restTimer.kind === 'exercise' ? 'Harjutuste vahel' : 'Puhkus'}</strong>
-                <span>{formatRestTime(restTimer.remainingSeconds)}</span>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => {
-                    writePersistedRestTimer(null);
-                    setRestTimer(null);
-                  }}
-                >
-                  Jätan vahele
-                </button>
-              </div>
-            ) : null}
-            {lastSavedSet?.sessionExerciseId === nextExercise.id ? (
-              <div className="undo-row">
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={async () => {
-                    await undoSetResult(lastSavedSet.id);
-                    setLastSavedSet(null);
-                    writePersistedRestTimer(null);
-                    setRestTimer(null);
-                  }}
-                >
-                  Võta tagasi
-                </button>
-              </div>
-            ) : null}
             <div className="utility-button-row">
               <button
                 type="button"
