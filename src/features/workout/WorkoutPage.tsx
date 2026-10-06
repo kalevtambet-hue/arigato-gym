@@ -55,7 +55,7 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function readPersistedRestTimer() {
+function readPersistedRestTimer(): PersistedRestTimer | null {
   if (typeof window === 'undefined') {
     return null;
   }
