@@ -22,6 +22,7 @@ import { countConsecutiveSuccesses } from '../../domain/consecutiveProgression';
 import { buildSessionExercises } from '../../domain/session';
 import { formatTarget, getSuccessValue, isDurationMode } from '../../domain/targetMode';
 import { createId } from '../../lib/id';
+import { getExerciseRestSeconds, getShowExerciseRestTimer } from '../settings/exerciseRestTimer';
 import { getSessionCompletionKind } from './workoutPresentation';
 import { ActiveExerciseCard } from './ActiveExerciseCard';
 import { SetActionBar } from './SetActionBar';
@@ -33,10 +34,13 @@ type DayExerciseView = DayExerciseRecord & {
 
 const REST_TIMER_STORAGE_KEY = 'treeninguabiline-rest-timer';
 
+type RestTimerKind = 'set' | 'exercise';
+
 type PersistedRestTimer = {
   workoutSessionId: string;
   sessionExerciseId: string;
   endsAt: number;
+  kind: RestTimerKind;
 };
 
 function nowIso() {
@@ -63,7 +67,12 @@ function readPersistedRestTimer() {
       return null;
     }
 
-    return parsed as PersistedRestTimer;
+    return {
+      workoutSessionId: parsed.workoutSessionId,
+      sessionExerciseId: parsed.sessionExerciseId,
+      endsAt: parsed.endsAt,
+      kind: parsed.kind === 'exercise' ? 'exercise' : 'set',
+    };
   } catch {
     return null;
   }
@@ -619,6 +628,7 @@ export function WorkoutPage() {
     sessionExerciseId: string;
     endsAt: number;
     remainingSeconds: number;
+    kind: RestTimerKind;
   } | null>(null);
   const [setEditTarget, setSetEditTarget] = useState<{
     id: string;
@@ -815,6 +825,11 @@ export function WorkoutPage() {
       return;
     }
 
+    if (persistedTimer.kind === 'exercise' && !getShowExerciseRestTimer()) {
+      writePersistedRestTimer(null);
+      return;
+    }
+
     const remainingSeconds = Math.max(Math.ceil((persistedTimer.endsAt - Date.now()) / 1000), 0);
     if (remainingSeconds <= 0) {
       writePersistedRestTimer(null);
@@ -836,6 +851,7 @@ export function WorkoutPage() {
       workoutSessionId: restTimer.workoutSessionId,
       sessionExerciseId: restTimer.sessionExerciseId,
       endsAt: restTimer.endsAt,
+      kind: restTimer.kind,
     });
   }, [restTimer]);
 
@@ -875,6 +891,35 @@ export function WorkoutPage() {
     const savedSet = await saveSetResult(sessionExercise, setNumber, status, completedReps);
     setLastSavedSet(savedSet);
 
+    if (setNumber === sessionExercise.targetSets) {
+      const resultCountByExerciseId = new Map<string, number>();
+      for (const result of setResults ?? []) {
+        resultCountByExerciseId.set(
+          result.workoutSessionExerciseId,
+          (resultCountByExerciseId.get(result.workoutSessionExerciseId) ?? 0) + 1,
+        );
+      }
+
+      const followingExercise = [...(sessionExercises ?? [])]
+        .sort((left, right) => left.orderIndex - right.orderIndex)
+        .filter((item) => item.orderIndex > sessionExercise.orderIndex)
+        .find((item) => (resultCountByExerciseId.get(item.id) ?? 0) < item.targetSets);
+      const exerciseRestSeconds = getExerciseRestSeconds();
+
+      setRestTimer(
+        followingExercise && getShowExerciseRestTimer() && exerciseRestSeconds > 0
+          ? {
+              workoutSessionId: sessionExercise.workoutSessionId,
+              sessionExerciseId: followingExercise.id,
+              endsAt: Date.now() + exerciseRestSeconds * 1000,
+              remainingSeconds: exerciseRestSeconds,
+              kind: 'exercise',
+            }
+          : null,
+      );
+      return;
+    }
+
     const restSeconds = dayExerciseMap.get(sessionExercise.dayExerciseId)?.restSeconds ?? 0;
     setRestTimer(
       restSeconds > 0
@@ -883,6 +928,7 @@ export function WorkoutPage() {
             sessionExerciseId: sessionExercise.id,
             endsAt: Date.now() + restSeconds * 1000,
             remainingSeconds: restSeconds,
+            kind: 'set',
           }
         : null,
     );
@@ -1012,7 +1058,7 @@ export function WorkoutPage() {
           >
             {restTimer?.sessionExerciseId === nextExercise.id ? (
               <div className="rest-timer-panel">
-                <strong>Puhkus</strong>
+                <strong>{restTimer.kind === 'exercise' ? 'Harjutuste vahel' : 'Puhkus'}</strong>
                 <span>{formatRestTime(restTimer.remainingSeconds)}</span>
                 <button
                   type="button"
